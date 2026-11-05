@@ -1,118 +1,168 @@
 # langchain-deepeval-lab
 
-A teaching repo that builds customer-support bots with **LangChain** and
-evaluates them with **DeepEval**: a tool-calling agent, a RAG agent and a
-multi-turn chatbot, each with its own evals.
+Three customer-support bots for a demo store, **ShopEasy**, built with
+**LangChain** and evaluated with **DeepEval**:
 
-The LLM vendor is a setting, not code. Claude runs everything by default;
-set `LLM_PROVIDER=openai` to switch to GPT-4o, and `JUDGE_PROVIDER` to have
-the evals judged by a different vendor than the one being tested.
+- a **tool-calling agent** that also loads a tool from an **MCP server**
+- a **RAG agent** that answers from a vector store of policy documents
+- a **multi-turn chatbot** that runs its own tool-call loop
 
----
+Each bot has its own eval suite. The suites cover tool use, answer quality,
+retrieval quality, multi-turn memory, custom LLM-judged criteria and safety
+checks on synthetic test data.
 
-## Files in this repo
-
-| File | Who writes it (in real life) | What it does |
-|---|---|---|
-| `agent_plain.py` | Developer (before evals exist) | A normal LangChain agent with two tools. No DeepEval code anywhere. |
-| `agent_instrumented.py` | Developer (after QA asks) | The **same** agent, with a few lines added to make it observable to DeepEval. |
-| `rag_agent.py` | Developer | An agent that answers from a small vector store of policy documents. |
-| `chatbot.py` | Developer | A multi-turn chatbot that runs its own tool-call loop. |
-| `config.py` | Developer | Picks the LLM vendor and model for everything else. |
-| `shop_tools.py` | Developer | The demo store's data and the tools the bots share. |
-| `evals/` | QA / Tester (you) | Imports the bots, defines goldens, runs metrics. |
+The model vendor is a setting. Claude runs everything by default.
+`LLM_PROVIDER=openai` switches the bots to GPT-4o, and `JUDGE_PROVIDER` lets
+a different vendor grade the evals so that no model judges its own answers.
 
 ---
 
-## The teaching point
+## Highlights
 
-The diff between `agent_plain.py` and `agent_instrumented.py` is a handful
-of lines. That's the entire ask QA makes of dev:
-
-1. `from deepeval.integrations.langchain import CallbackHandler`
-2. `deepeval_callback = CallbackHandler()`
-3. `config={"callbacks": [deepeval_callback]}` on `.invoke()`
-4. `update_current_trace(output=reply)` to put the clean reply on the trace
-
-The eval side wraps the agent with `@observe` (see `traced()` in
-`evals/common.py`), and everything else stays exactly the same.
-
-Show students both files side by side. Once they see the diff is tiny,
-they stop being intimidated by component-level evaluation.
+- **Provider-agnostic.** Only `config.py` names a vendor or model. Every bot
+  exposes a factory (`build_agent(llm=None)`, `build_model(llm=None)`) that
+  takes any LangChain chat model.
+- **Trace-level evaluation.** The agents send every LLM call and tool call to
+  DeepEval as spans, so metrics see the whole run and not only the final
+  reply.
+- **RAG metrics.** The RAG agent attaches its retrieved chunks to the trace,
+  so the retriever (contextual precision and recall) and the generator
+  (faithfulness, relevancy) are scored separately.
+- **Multi-turn evals.** The chatbot is driven live through a scripted
+  conversation and scored on turn relevancy, knowledge retention and
+  completeness.
+- **Synthetic goldens.** DeepEval's Synthesizer generates test inputs from
+  `policies.txt`, and the agent's answers are checked for bias, toxicity and
+  PII leakage.
+- **MCP.** `agent_instrumented.py` starts `mcp_server.py` over stdio and
+  merges its tool with the local ones.
 
 ---
 
-## How to run
+## Instrumenting an agent
 
-```bash
-# 1. Install dependencies
-pip install -r requirements.txt
+Making a LangChain agent observable to DeepEval takes four additions:
 
-# 2. Set your API keys: copy the template and fill it in
-cp .env.example .env
+```python
+from deepeval.integrations.langchain import CallbackHandler
+from deepeval.tracing.context import update_current_trace
 
-# 3. (Optional but recommended) log in to Confident AI to see traces in a UI
-deepeval login
+deepeval_callback = CallbackHandler()
 
-# 4. Sanity check: run the agent on its own
-python agent_instrumented.py
-
-# 5. Run an evaluation (from the project root, as a module)
-python -m evals.test_TracingComponentsTest
+def support_agent(user_input: str) -> str:
+    result = agent.invoke(
+        {"messages": [{"role": "user", "content": user_input}]},
+        config={"callbacks": [deepeval_callback]},
+    )
+    reply = result["messages"][-1].text
+    update_current_trace(output=reply)
+    return reply
 ```
 
-The other evals in `evals/` run the same way, for example
-`python -m evals.test_rag_agent` or `python -m evals.test_chatbot`.
+The eval opens the trace and attaches the expected values from each golden:
 
-To try the other vendor for one run, prefix the command:
-`LLM_PROVIDER=openai python agent_instrumented.py`
-(PowerShell: `$env:LLM_PROVIDER="openai"; python agent_instrumented.py`).
+```python
+support_agent = traced(_support_agent, name="support_agent")  # evals/common.py
 
----
+dataset = EvaluationDataset(goldens=[
+    Golden(input="Where is my order ORD-1042?",
+           expected_tools=[ToolCall(name="get_order_status")]),
+])
 
-## What you'll see
+for golden in dataset.evals_iterator(metrics=[task_completion, tool_correctness]):
+    support_agent(golden.input)
+```
 
-`test_TracingComponentsTest.py` makes DeepEval:
-1. Invoke `support_agent(...)` for each golden input
-2. Capture the full trace (LangChain LLM call + tool call + final message)
-3. Apply **Task Completion** to the whole trace
-4. Apply **Tool Correctness** to the tool-call span
-5. Print scores + reasons per golden
-
-Then run `test_TaskCompletion.py`, which checks the same answer **without**
-a trace. The judge can no longer see that the agent called a tool, assumes
-the answer was made up, and fails it. That's the moment that makes
-component-level evaluation click.
+`agent_plain.py` is the same agent without any DeepEval code, so you can
+diff the two files.
 
 ---
 
-## Suggested lesson flow
+## Eval suite
 
-| Minute | Activity |
+| Script | Bot | Metrics | What it covers |
+|---|---|---|---|
+| `test_TracingComponentsTest` | Agent | TaskCompletion, ToolCorrectness | Did the agent finish the task and pick the right tool? |
+| `test_multipleEvalsTest` | Agent | AnswerRelevancy, PromptAlignment, StepEfficiency | Reply quality, system-prompt adherence, wasted steps |
+| `test_customMetricEvals` | Agent | GEval | Custom correctness criteria against an expected answer |
+| `test_TaskCompletion` | Agent | TaskCompletion | The same check on the bare reply with no trace. It fails because the judge cannot see the tool call, which shows why trace-level evals matter |
+| `test_rag_agent` | RAG agent | ContextualPrecision, ContextualRecall, AnswerRelevancy, Faithfulness | Retrieval and generation scored separately |
+| `test_chatbot` | Chatbot | TurnRelevancy, KnowledgeRetention, ConversationCompleteness | A four-turn conversation that tests memory |
+| `test_chatbot_customreqd` | Chatbot | ConversationalGEval | Custom criteria over the whole conversation |
+| `test_agent_synthesized` | Agent | Bias, Toxicity, PIILeakage | Safety checks on Synthesizer-generated goldens |
+
+Every metric receives the judge model explicitly, so a Claude-only setup
+never falls back to DeepEval's default OpenAI judge.
+
+---
+
+## Quick start
+
+```bash
+pip install -r requirements.txt
+cp .env.example .env          # then fill in your keys
+
+python agent_instrumented.py  # run a bot on its own
+python chatbot.py             # interactive; type 'quit' to exit
+
+python -m evals.test_TracingComponentsTest   # run an eval suite
+```
+
+Run eval scripts from the project root as modules (`python -m evals.<name>`).
+
+To switch vendor for a single run:
+
+```bash
+LLM_PROVIDER=openai python agent_instrumented.py            # bash
+$env:LLM_PROVIDER="openai"; python agent_instrumented.py    # PowerShell
+```
+
+To view traces and scores in a dashboard, run `deepeval login` or set
+`CONFIDENT_API_KEY` in `.env`. No code changes are needed.
+
+---
+
+## Configuration
+
+| Variable | Purpose |
 |---|---|
-| 0–5 | Show `agent_plain.py`. Ask: "How would you test this?" |
-| 5–10 | Show `agent_instrumented.py` side-by-side. Walk through the diff. |
-| 10–25 | Walk through `evals/test_TracingComponentsTest.py` line by line. |
-| 25–35 | Run it live, then run `evals/test_TaskCompletion.py` and compare. |
-| 35+ | Open discussion: what other metrics? what other goldens? |
+| `LLM_PROVIDER` | Vendor that runs the bots: `anthropic` (default) or `openai` |
+| `JUDGE_PROVIDER` | Vendor that judges the evals. Defaults to `LLM_PROVIDER` |
+| `ANTHROPIC_API_KEY` | Needed when either provider is `anthropic` |
+| `OPENAI_API_KEY` | Needed when either provider is `openai`, and always by `test_agent_synthesized` |
+| `VOYAGE_API_KEY` | Embeddings for the RAG agent |
+| `CONFIDENT_API_KEY` | Optional: streams traces to Confident AI |
+
+Model IDs live in `MODELS` in `config.py`.
 
 ---
 
-## Reality checks before teaching
+## Project layout
 
-DeepEval's integration surface evolves. Before your first session, run the
-demo end-to-end once and confirm:
+```
+config.py               vendor and model selection
+shop_tools.py           demo order/refund data and the two shared @tool functions
+agent_plain.py          tool-calling agent, no eval code
+agent_instrumented.py   the same agent with DeepEval tracing and an MCP tool
+mcp_server.py           MCP server exposing get_shipping_options
+rag_agent.py            RAG agent: in-memory vector store + Voyage AI embeddings
+chatbot.py              multi-turn chatbot with a manual tool-call loop
+policies.txt            source document for synthetic goldens
+evals/common.py         judge factory, async config, tracing wrapper
+evals/test_*.py         the eval suites above
+```
 
-- The model IDs in `MODELS` in `config.py`: if one errors, swap in the
-  latest from the vendor's console.
-- `from deepeval.integrations.langchain import CallbackHandler`: works as
-  written in recent DeepEval versions; older versions may use a different
-  import path.
-- `Golden(expected_tools=[ToolCall(name="...")])`: accepted in current
-  DeepEval; in older versions you may need to pass via `additional_metadata`
-  and unpack via `update_current_span`.
+---
 
-Fix any version issue once, then it's solid for the whole course.
+## Known limitations
+
+- **DeepEval's Synthesizer embeds with OpenAI**, so `test_agent_synthesized`
+  needs `OPENAI_API_KEY` even when Claude is the judge.
+- **The Voyage AI free tier allows 3 requests per minute.** `rag_agent.py`
+  embeds its documents on import, so repeated runs within a minute are
+  rate-limited.
+- **Windows:** set `PYTHONIOENCODING=utf-8` when piping output, or emoji in
+  model replies crash the cp1252 console encoder.
 
 ---
 

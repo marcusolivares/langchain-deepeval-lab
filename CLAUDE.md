@@ -61,7 +61,7 @@ Switch vendor per run without editing `.env`: `LLM_PROVIDER=openai python agent_
 |---|---|
 | `config.py` | The one place the LLM vendor is chosen. Reads `LLM_PROVIDER` / `JUDGE_PROVIDER`, holds the model IDs in `MODELS`, and builds chat models with `get_chat_model()` (`init_chat_model` under the hood). |
 | `shop_tools.py` | The ShopEasy demo data (`ORDERS`, `REFUND_POLICIES`) and the two `@tool` functions `get_order_status` and `get_refund_policy`, shared by the agents and the chatbot. |
-| `agent_plain.py` | Baseline LangChain agent with the two shop tools. No eval code — the "before" state shown to students. |
+| `agent_plain.py` | Baseline LangChain agent with the two shop tools. No eval code; kept as a baseline to diff against `agent_instrumented.py`. |
 | `agent_instrumented.py` | The same agent plus DeepEval instrumentation and one extra tool loaded from `mcp_server.py`. The agent evals import `support_agent` from here. |
 | `mcp_server.py` | MCP server exposing `get_shipping_options`, started over stdio by `agent_instrumented.py`. |
 | `rag_agent.py` | Agent backed by a 9-document in-memory vector store (`InMemoryVectorStore` + Voyage AI embeddings). One tool: `search_policies`. Retrieved chunks are forwarded to the trace as `retrieval_context`. |
@@ -123,7 +123,7 @@ The eval side adds the rest with `traced()` from `evals/common.py`: `@observe(na
 
 ## Known issues
 
-- **`test_TaskCompletion.py` scores low on purpose**: it passes a plain `LLMTestCase` with no trace, so the judge cannot see the tool call and assumes the answer is made up. `test_TracingComponentsTest.py` runs the same check on a trace and passes. Useful as a teaching contrast.
+- **`test_TaskCompletion.py` scores low on purpose**: it passes a plain `LLMTestCase` with no trace, so the judge cannot see the tool call and assumes the answer is made up. `test_TracingComponentsTest.py` runs the same check on a trace and passes. Kept as a baseline that shows why trace-level evals matter.
 - **Synthesizer needs OpenAI**: DeepEval has no Anthropic or Voyage embedder, so `test_agent_synthesized.py` embeds `policies.txt` with OpenAI even when the judge is Claude.
 - **Voyage free tier is 3 requests/minute**: `rag_agent.py` embeds its 9 documents on import, so repeated RAG runs within a minute hit `RateLimitError` until a payment method is added.
 - **Windows console encoding**: when stdout is piped, Python on Windows encodes with cp1252 and crashes on emoji in model replies. Set `PYTHONIOENCODING=utf-8`.
