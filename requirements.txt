@@ -1,11 +1,14 @@
-deepeval
-langchain
-langchain-voyageai
-langchain-anthropic
-langchain-openai
-langchain-mcp-adapters
-langgraph
-langchain-core
-openai
-anthropic<2
-python-dotenv
+# Direct dependencies, pinned to the versions the evals were last run with.
+# DeepEval's API changes between minor versions, so upgrade deliberately.
+deepeval==4.3.1
+langchain==1.4.6
+langchain-core==1.6.12
+langgraph==1.2.16
+langchain-anthropic==1.7.6
+langchain-openai==1.7.2
+langchain-voyageai==0.4.1
+langchain-mcp-adapters==0.3.2
+mcp==1.30.0
+anthropic==1.15.0
+openai==3.35.1
+python-dotenv==1.2.4
