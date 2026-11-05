@@ -1,23 +1,16 @@
-"""Chatbot: a custom ConversationalGEval correctness metric over a live conversation."""
+"""
+Chatbot: a custom ConversationalGEval correctness metric over a live conversation.
+The judge also sees the tools the chatbot called on each turn.
+"""
 
 from deepeval.evaluate import evaluate
 from deepeval.metrics import ConversationalGEval
-from deepeval.test_case import ConversationalTestCase, MultiTurnParams, Turn
+from deepeval.test_case import ConversationalTestCase, MultiTurnParams
 
 from chatbot import chat
-from evals.common import ASYNC_CONFIG, get_judge
+from evals.common import ASYNC_CONFIG, SUPPORT_CONVERSATION, get_judge, run_conversation
 
-turns = []
-history = []
-for user_msg in [
-    "Hi! I placed an order last week, the order ID is ORD-1042.",
-    "Is it going to arrive on time?",
-    "What was the ETA you just mentioned?",  # tests memory retention
-    "Can I upgrade to express shipping?",
-]:
-    reply, history, _ = chat(user_msg, history)
-    turns.append(Turn(role="user", content=user_msg))
-    turns.append(Turn(role="assistant", content=reply))
+turns = run_conversation(chat, SUPPORT_CONVERSATION)
 
 correctness = ConversationalGEval(
     name="Correctness",
@@ -30,6 +23,7 @@ correctness = ConversationalGEval(
     evaluation_params=[
         MultiTurnParams.ROLE,
         MultiTurnParams.CONTENT,
+        MultiTurnParams.TOOLS_CALLED,
     ],
 )
 

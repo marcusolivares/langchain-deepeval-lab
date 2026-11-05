@@ -8,22 +8,12 @@ from deepeval.metrics import (
     KnowledgeRetentionMetric,
     TurnRelevancyMetric,
 )
-from deepeval.test_case import ConversationalTestCase, Turn
+from deepeval.test_case import ConversationalTestCase
 
 from chatbot import chat
-from evals.common import ASYNC_CONFIG, get_judge
+from evals.common import ASYNC_CONFIG, SUPPORT_CONVERSATION, get_judge, run_conversation
 
-turns = []
-history = []
-for user_msg in [
-    "Hi! I placed an order last week, the order ID is ORD-1042.",
-    "Is it going to arrive on time?",
-    "What was the ETA you just mentioned?",  # tests memory retention
-    "Can I upgrade to express shipping?",
-]:
-    reply, history, _ = chat(user_msg, history)
-    turns.append(Turn(role="user", content=user_msg))
-    turns.append(Turn(role="assistant", content=reply))
+turns = run_conversation(chat, SUPPORT_CONVERSATION)
 
 judge = get_judge()
 

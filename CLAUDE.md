@@ -67,7 +67,7 @@ Switch vendor per run without editing `.env`: `LLM_PROVIDER=openai python agent_
 | `rag_agent.py` | Agent backed by a 9-document in-memory vector store (`InMemoryVectorStore` + Voyage AI embeddings). One tool: `search_policies`. Retrieved chunks are forwarded to the trace as `retrieval_context`. |
 | `chatbot.py` | Multi-turn chatbot that runs its own tool-call loop over a model with `bind_tools()`, returning `(reply, history, tools_called)` per turn. |
 | `policies.txt` | Source document for `test_agent_synthesized.py`. |
-| `evals/common.py` | Shared eval helpers: `get_judge()`, `ASYNC_CONFIG`, and `traced()`. |
+| `evals/common.py` | Shared eval helpers: `get_judge()`, `ASYNC_CONFIG`, `traced()`, and the chatbot conversation driver `run_conversation()`. |
 | `evals/test_*.py` | The eval scripts listed under Running. |
 
 ## Architecture
@@ -96,8 +96,8 @@ The eval side adds the rest with `traced()` from `evals/common.py`: `@observe(na
 
 **Chatbot evaluation pattern** (`evals/test_chatbot*.py`):
 - Uses `ConversationalTestCase` + `Turn` objects instead of `Golden`
-- Drives `chat()` live over a fixed list of user messages, collecting `Turn(role="user")` / `Turn(role="assistant")` pairs
-- `ToolCorrectnessMetric` cannot be used with `ConversationalTestCase`; assess tool use with `ConversationalGEval` (e.g. `MultiTurnParams.TOOLS_CALLED`)
+- `run_conversation(chat, SUPPORT_CONVERSATION)` in `evals/common.py` drives `chat()` live over a scripted list of user messages and returns `Turn` objects; each assistant `Turn` carries the tools called on that turn as `tools_called`
+- `ToolCorrectnessMetric` cannot be used with `ConversationalTestCase`; `test_chatbot_geval.py` judges tool use with `ConversationalGEval` and `MultiTurnParams.TOOLS_CALLED`
 - Uses `evaluate()` (not `evals_iterator()`) since there is no golden to iterate over
 
 ## Metric reference
