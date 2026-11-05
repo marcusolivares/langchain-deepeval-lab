@@ -13,10 +13,13 @@ Architecture:
 
 What's new vs agent_instrumented.py:
   - search_policies tool replaces get_order_status / get_refund_policy
-  - Retrieved chunks are captured into the DeepEval trace as retrieval_context
-    so that RAG metrics (Faithfulness, Contextual Precision/Recall) can run
+  - The tool returns the retrieved chunks as a ToolMessage artifact; the entry
+    point collects them from the run and puts them on the DeepEval trace as
+    retrieval_context, so RAG metrics (Faithfulness, Contextual
+    Precision/Recall) can run
 """
 
+from langchain_core.messages import ToolMessage
 from langchain_core.tools import tool
 from langchain_core.vectorstores import InMemoryVectorStore
 from langchain_voyageai import VoyageAIEmbeddings
@@ -81,20 +84,26 @@ vector_store.add_texts(POLICY_DOCS)
 
 # ---------------------------------------------------------------------------
 # Retrieval tool — returns top-3 policy chunks for a query.
-# Also stashes the retrieved text in a module-level list so the @observe
-# wrapper can forward it to the DeepEval trace as retrieval_context.
+# The model sees the joined text; the chunk list rides along as the
+# ToolMessage artifact so the entry point can put it on the trace.
 # ---------------------------------------------------------------------------
-_last_retrieved: list[str] = []
-
-
-@tool
-def search_policies(query: str) -> str:
+@tool(response_format="content_and_artifact")
+def search_policies(query: str) -> tuple[str, list[str]]:
     """Search the customer-support knowledge base for policy information."""
-    global _last_retrieved
     docs = vector_store.similarity_search(query, k=3)
     chunks = [doc.page_content for doc in docs]
-    _last_retrieved = chunks
-    return "\n\n".join(chunks)
+    return "\n\n".join(chunks), chunks
+
+
+def retrieved_chunks(messages: list) -> list[str]:
+    """Return the chunks every search_policies call in a run retrieved, in order, deduplicated."""
+    chunks = [
+        chunk
+        for msg in messages
+        if isinstance(msg, ToolMessage) and msg.name == search_policies.name
+        for chunk in msg.artifact or []
+    ]
+    return list(dict.fromkeys(chunks))
 
 
 # ---------------------------------------------------------------------------
@@ -124,9 +133,6 @@ deepeval_callback = CallbackHandler()
 # ---------------------------------------------------------------------------
 def rag_support_agent(user_input: str) -> str:
     """Run the RAG agent and return the final reply."""
-    global _last_retrieved
-    _last_retrieved = []
-
     result = agent.invoke(
         {"messages": [{"role": "user", "content": user_input}]},
         config={"callbacks": [deepeval_callback]},
@@ -136,7 +142,7 @@ def rag_support_agent(user_input: str) -> str:
     # Set clean reply string and retrieved chunks on the trace.
     update_current_trace(
         output=reply,
-        retrieval_context=_last_retrieved if _last_retrieved else None,
+        retrieval_context=retrieved_chunks(result["messages"]) or None,
     )
 
     return reply
