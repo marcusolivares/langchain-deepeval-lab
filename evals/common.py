@@ -35,6 +35,7 @@ def traced(agent_fn, name: str):
     DeepEval metrics read expected_output and expected_tools from the trace,
     not from the golden, so copy them over from the golden being evaluated.
     """
+
     @observe(name=name)
     def wrapper(user_input: str) -> str:
         golden = get_current_golden()
