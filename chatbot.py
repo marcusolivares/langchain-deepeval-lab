@@ -1,9 +1,13 @@
 """
 chatbot.py
 ==========
-A multi-turn customer-support chatbot with tool calling, built with GPT-4o.
+A multi-turn customer-support chatbot with tool calling.
 
-Tools available (same data as agent_plain.py):
+The LLM comes from config.py (Claude by default, GPT-4o with
+LLM_PROVIDER=openai). LangChain's bind_tools() translates the tools into
+each vendor's own tool-calling format, so one loop works for both.
+
+Tools available (shared with the agents via shop_tools.py):
   - get_order_status(order_id)   → real-time shipping status from in-memory DB
   - get_refund_policy(category)  → refund rules per product category
 
@@ -15,7 +19,7 @@ multi-turn evaluation possible with DeepEval.
 chat() returns:
   - reply        : the final assistant text shown to the user
   - history      : updated message history to pass into the next turn
-  - tools_called : list of (tool_name, args, result) for this turn
+  - tools_called : list of {"name": ..., "args": ..., "result": ...} for this turn
 
 Usage:
     history = []
@@ -26,90 +30,13 @@ How to run standalone:
     python chatbot.py
 """
 
-from dotenv import load_dotenv
+from langchain_core.messages import BaseMessage, HumanMessage, SystemMessage, ToolMessage
 
-load_dotenv()
+from config import get_chat_model
+from shop_tools import get_order_status, get_refund_policy
 
-import json
-from openai import OpenAI
-
-client = OpenAI()
-
-# ---------------------------------------------------------------------------
-# In-memory data (same as agent_plain.py)
-# ---------------------------------------------------------------------------
-ORDERS = {
-    "ORD-1042": {"status": "Shipped",    "eta": "2026-05-13"},
-    "ORD-2099": {"status": "Delivered",  "eta": "2026-05-08"},
-    "ORD-7777": {"status": "Processing", "eta": "2026-05-15"},
-}
-
-REFUND_POLICIES = {
-    "electronics": "Electronics can be returned within 15 days, unopened.",
-    "clothing":    "Clothing can be returned within 30 days with tags attached.",
-    "food":        "Food items are non-returnable for safety reasons.",
-    "furniture":   "Furniture can be returned within 30 days if unassembled.",
-}
-
-# ---------------------------------------------------------------------------
-# Tool definitions — passed to the OpenAI API
-# ---------------------------------------------------------------------------
-TOOLS = [
-    {
-        "type": "function",
-        "function": {
-            "name": "get_order_status",
-            "description": "Look up the shipping status of a customer order by its ID.",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "order_id": {
-                        "type": "string",
-                        "description": "The order ID, e.g. ORD-1042",
-                    }
-                },
-                "required": ["order_id"],
-            },
-        },
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "get_refund_policy",
-            "description": "Return the refund/return policy for a product category.",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "category": {
-                        "type": "string",
-                        "description": "Product category, e.g. electronics, clothing, food",
-                    }
-                },
-                "required": ["category"],
-            },
-        },
-    },
-]
-
-# ---------------------------------------------------------------------------
-# Tool executor
-# ---------------------------------------------------------------------------
-def _execute_tool(name: str, args: dict) -> str:
-    if name == "get_order_status":
-        order_id = args.get("order_id", "").upper()
-        order = ORDERS.get(order_id)
-        if not order:
-            return f"No order found with ID {order_id}."
-        return f"Order {order_id} is {order['status']}. ETA: {order['eta']}."
-
-    if name == "get_refund_policy":
-        category = args.get("category", "").lower()
-        policy = REFUND_POLICIES.get(category)
-        if not policy:
-            return f"No refund policy on file for '{category}'."
-        return policy
-
-    return f"Unknown tool: {name}"
+TOOLS = [get_order_status, get_refund_policy]
+TOOLS_BY_NAME = {t.name: t for t in TOOLS}
 
 # ---------------------------------------------------------------------------
 # System prompt
@@ -129,12 +56,23 @@ Rules:
 
 
 # ---------------------------------------------------------------------------
+# Model — the default from config.py with the shop tools bound to it
+# ---------------------------------------------------------------------------
+def build_model(llm=None):
+    """Bind the tools to a chat model. Uses the default from config.py unless llm is given."""
+    return (llm or get_chat_model()).bind_tools(TOOLS)
+
+
+model = build_model()
+
+
+# ---------------------------------------------------------------------------
 # chat() — one user turn, returns reply + updated history + tools used
 # ---------------------------------------------------------------------------
 def chat(
     user_message: str,
-    history: list[dict],
-) -> tuple[str, list[dict], list[dict]]:
+    history: list[BaseMessage],
+) -> tuple[str, list[BaseMessage], list[dict]]:
     """
     Send one user message, handle any tool calls, return the final reply.
 
@@ -144,41 +82,26 @@ def chat(
         tools_called : list of {"name": ..., "args": ..., "result": ...}
                        for all tools the model called this turn
     """
-    history = history + [{"role": "user", "content": user_message}]
+    history = history + [HumanMessage(user_message)]
     tools_called = []
 
     while True:
-        response = client.chat.completions.create(
-            model="gpt-4o",
-            messages=[{"role": "system", "content": SYSTEM_PROMPT}] + history,
-            tools=TOOLS,
-            tool_choice="auto",
-            temperature=0,
-        )
-
-        msg = response.choices[0].message
+        response = model.invoke([SystemMessage(SYSTEM_PROMPT)] + history)
+        history = history + [response]
 
         # No tool call — final answer
-        if not msg.tool_calls:
-            reply = msg.content
-            history = history + [{"role": "assistant", "content": reply}]
-            return reply, history, tools_called
+        if not response.tool_calls:
+            return response.text, history, tools_called
 
         # Execute every tool the model requested, then loop back
-        history = history + [msg]          # append the assistant's tool-call message
-        for tc in msg.tool_calls:
-            args = json.loads(tc.function.arguments)
-            result = _execute_tool(tc.function.name, args)
+        for tc in response.tool_calls:
+            result = TOOLS_BY_NAME[tc["name"]].invoke(tc["args"])
             tools_called.append({
-                "name":   tc.function.name,
-                "args":   args,
+                "name":   tc["name"],
+                "args":   tc["args"],
                 "result": result,
             })
-            history = history + [{
-                "role":         "tool",
-                "tool_call_id": tc.id,
-                "content":      result,
-            }]
+            history = history + [ToolMessage(result, tool_call_id=tc["id"])]
 
 
 # ---------------------------------------------------------------------------

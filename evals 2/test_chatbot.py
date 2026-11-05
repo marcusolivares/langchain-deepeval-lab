@@ -9,7 +9,7 @@ from deepeval.models import AnthropicModel
 sys.path.insert( 0, os.path.dirname( os.path.dirname( os.path.abspath( __file__ ) ) ) )
 
 from deepeval.test_case import ConversationalTestCase, Turn
-from chatbot_anthropic import chat
+from chatbot import chat
 
 turns = []
 history = []
