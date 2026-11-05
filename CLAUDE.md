@@ -37,17 +37,17 @@ python rag_agent.py
 python chatbot.py                               # interactive, type 'quit' to exit
 
 # Phase 1 — tool-calling support agent
-python -m evals.test_TaskCompletion             # TaskCompletion on a plain test case (no trace)
-python -m evals.test_TracingComponentsTest      # TaskCompletion + ToolCorrectness on traced goldens
-python -m evals.test_multipleEvalsTest          # AnswerRelevancy + PromptAlignment + StepEfficiency
-python -m evals.test_customMetricEvals          # GEval correctness against expected_output
+python -m evals.test_agent_untraced             # TaskCompletion on a plain test case (no trace)
+python -m evals.test_agent_tracing              # TaskCompletion + ToolCorrectness on traced goldens
+python -m evals.test_agent_quality              # AnswerRelevancy + PromptAlignment + StepEfficiency
+python -m evals.test_agent_geval                # GEval correctness against expected_output
 
 # Phase 2 — RAG agent
 python -m evals.test_rag_agent                  # ContextualPrecision + ContextualRecall + AnswerRelevancy + Faithfulness
 
 # Phase 3 — multi-turn chatbot
 python -m evals.test_chatbot                    # TurnRelevancy + KnowledgeRetention + ConversationCompleteness
-python -m evals.test_chatbot_customreqd         # ConversationalGEval with custom criteria
+python -m evals.test_chatbot_geval              # ConversationalGEval with custom criteria
 
 # Safety evals on synthesized goldens
 python -m evals.test_agent_synthesized          # Synthesizer + Bias + Toxicity + PIILeakage
@@ -123,9 +123,9 @@ The eval side adds the rest with `traced()` from `evals/common.py`: `@observe(na
 
 ## Known issues
 
-- **`test_TaskCompletion.py` scores low on purpose**: it passes a plain `LLMTestCase` with no trace, so the judge cannot see the tool call and assumes the answer is made up. `test_TracingComponentsTest.py` runs the same check on a trace and passes. Kept as a baseline that shows why trace-level evals matter.
+- **`test_agent_untraced.py` scores low on purpose**: it passes a plain `LLMTestCase` with no trace, so the judge cannot see the tool call and assumes the answer is made up. `test_agent_tracing.py` runs the same check on a trace and passes. Kept as a baseline that shows why trace-level evals matter.
 - **Synthesizer needs OpenAI**: DeepEval has no Anthropic or Voyage embedder, so `test_agent_synthesized.py` embeds `policies.txt` with OpenAI even when the judge is Claude.
 - **Voyage free tier is 3 requests/minute**: `rag_agent.py` embeds its 9 documents on import, so repeated RAG runs within a minute hit `RateLimitError` until a payment method is added.
 - **Windows console encoding**: when stdout is piped, Python on Windows encodes with cp1252 and crashes on emoji in model replies. Set `PYTHONIOENCODING=utf-8`.
 - **`create_react_agent` deprecation**: migrated to `from langchain.agents import create_agent` with `system_prompt=` replacing `prompt=`. Requires the `langchain` base package.
-- **Old `_make_hashable` patch**: DeepEval 4.0.4 crashed `ToolCorrectnessMetric` on unhashable `ToolMessage` objects and was patched by hand in the venv. DeepEval 4.3.1 runs `test_TracingComponentsTest.py` without the patch.
+- **Old `_make_hashable` patch**: DeepEval 4.0.4 crashed `ToolCorrectnessMetric` on unhashable `ToolMessage` objects and was patched by hand in the venv. DeepEval 4.3.1 runs `test_agent_tracing.py` without the patch.

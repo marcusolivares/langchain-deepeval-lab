@@ -82,13 +82,13 @@ diff the two files.
 
 | Script | Bot | Metrics | What it covers |
 |---|---|---|---|
-| `test_TracingComponentsTest` | Agent | TaskCompletion, ToolCorrectness | Did the agent finish the task and pick the right tool? |
-| `test_multipleEvalsTest` | Agent | AnswerRelevancy, PromptAlignment, StepEfficiency | Reply quality, system-prompt adherence, wasted steps |
-| `test_customMetricEvals` | Agent | GEval | Custom correctness criteria against an expected answer |
-| `test_TaskCompletion` | Agent | TaskCompletion | The same check on the bare reply with no trace. It fails because the judge cannot see the tool call, which shows why trace-level evals matter |
+| `test_agent_tracing` | Agent | TaskCompletion, ToolCorrectness | Did the agent finish the task and pick the right tool? |
+| `test_agent_quality` | Agent | AnswerRelevancy, PromptAlignment, StepEfficiency | Reply quality, system-prompt adherence, wasted steps |
+| `test_agent_geval` | Agent | GEval | Custom correctness criteria against an expected answer |
+| `test_agent_untraced` | Agent | TaskCompletion | The same check on the bare reply with no trace. It fails because the judge cannot see the tool call, which shows why trace-level evals matter |
 | `test_rag_agent` | RAG agent | ContextualPrecision, ContextualRecall, AnswerRelevancy, Faithfulness | Retrieval and generation scored separately |
 | `test_chatbot` | Chatbot | TurnRelevancy, KnowledgeRetention, ConversationCompleteness | A four-turn conversation that tests memory |
-| `test_chatbot_customreqd` | Chatbot | ConversationalGEval | Custom criteria over the whole conversation |
+| `test_chatbot_geval` | Chatbot | ConversationalGEval | Custom criteria over the whole conversation |
 | `test_agent_synthesized` | Agent | Bias, Toxicity, PIILeakage | Safety checks on Synthesizer-generated goldens |
 
 Every metric receives the judge model explicitly, so a Claude-only setup
@@ -105,7 +105,7 @@ cp .env.example .env          # then fill in your keys
 python agent_instrumented.py  # run a bot on its own
 python chatbot.py             # interactive; type 'quit' to exit
 
-python -m evals.test_TracingComponentsTest   # run an eval suite
+python -m evals.test_agent_tracing   # run an eval suite
 ```
 
 Run eval scripts from the project root as modules (`python -m evals.<name>`).
