@@ -88,11 +88,54 @@ diff the two files.
 | `test_agent_untraced` | Agent | TaskCompletion | The same check on the bare reply with no trace. It fails because the judge cannot see the tool call, which shows why trace-level evals matter |
 | `test_rag_agent` | RAG agent | ContextualPrecision, ContextualRecall, AnswerRelevancy, Faithfulness | Retrieval and generation scored separately |
 | `test_chatbot` | Chatbot | TurnRelevancy, KnowledgeRetention, ConversationCompleteness | A four-turn conversation that tests memory |
-| `test_chatbot_geval` | Chatbot | ConversationalGEval | Custom criteria over the whole conversation |
+| `test_chatbot_geval` | Chatbot | ConversationalGEval | Custom criteria over the whole conversation, including the tools called on each turn |
 | `test_agent_synthesized` | Agent | Bias, Toxicity, PIILeakage | Safety checks on Synthesizer-generated goldens |
 
 Every metric receives the judge model explicitly, so a Claude-only setup
 never falls back to DeepEval's default OpenAI judge.
+
+---
+
+## Results
+
+One run on 2026-11-05, with Claude Sonnet 4.6 as both bot and judge. Judge
+cost was about $0.35 in total. Each suite has only 1–3 test cases, so treat
+these scores as a snapshot, not a benchmark.
+
+| Suite | Metric | Score | Passed |
+|---|---|---|---|
+| `test_agent_tracing` | Task Completion | 0.95 | 2/2 |
+| | Tool Correctness | 1.00 | 2/2 |
+| `test_agent_quality` | Answer Relevancy | 0.96 | 3/3 |
+| | Prompt Alignment | 0.67 | 2/3 |
+| | Step Efficiency | 0.53 | 2/3 |
+| `test_agent_geval` | Correctness (GEval) | 0.90 | 1/1 |
+| `test_agent_untraced` | Task Completion | 0.30 | 0/1 |
+| `test_rag_agent` | Contextual Precision | 1.00 | 2/2 |
+| | Contextual Recall | 1.00 | 2/2 |
+| | Answer Relevancy | 1.00 | 2/2 |
+| | Faithfulness | 1.00 | 2/2 |
+| `test_chatbot` | Turn Relevancy | 1.00 | 1/1 |
+| | Knowledge Retention | 1.00 | 1/1 |
+| | Conversation Completeness | 0.75 | 1/1 |
+| `test_chatbot_geval` | Correctness (ConversationalGEval) | 0.60 | 0/1 |
+
+Scores are means across a suite's test cases. `test_agent_synthesized` is not
+included because it needs an OpenAI key.
+
+What the failures show:
+
+- **Trace vs no trace.** The same Task Completion check scores 0.95 on the
+  trace and 0.30 on the bare reply. Without the trace, the judge cannot see
+  the `get_order_status` call and assumes the answer was made up.
+- **A real agent bug.** For *"I want to return order ORD-2099, what should I
+  do?"* the agent called no tools and asked for the product category several
+  times in one reply. Prompt Alignment scored 0.0 and Step Efficiency 0.1.
+  The cause is a gap in the tools: `ORDERS` stores each order's category,
+  but `get_order_status` does not return it.
+- **A chatbot inconsistency.** The judge saw the `get_order_status` call
+  in the transcript. It also caught that in turn 2 the bot said it had no
+  ETA right after stating one.
 
 ---
 
