@@ -18,8 +18,10 @@ without ever touching this file again.
 """
 
 import asyncio
-import os
 import sys
+from concurrent.futures import ThreadPoolExecutor
+from functools import cache
+from pathlib import Path
 
 from langchain_mcp_adapters.client import MultiServerMCPClient
 from langchain.agents import create_agent
@@ -35,22 +37,30 @@ from deepeval.tracing.context import update_current_trace
 # ---------------------------------------------------------------------------
 # Same agent as agent_plain.py.
 # ---------------------------------------------------------------------------
-# Load one extra tool from the MCP server at startup and merge it in.
-_mcp_tools = asyncio.run(
-    MultiServerMCPClient({
+@cache
+def load_mcp_tools() -> list:
+    """Start mcp_server.py over stdio and return its tools as LangChain tools.
+
+    Runs on the first build_agent() call, not at import. The async client runs
+    in a worker thread so it never touches the caller's event loop (DeepEval's
+    evals_iterator keeps one open).
+    """
+    client = MultiServerMCPClient({
         "shopease": {
             "command": sys.executable,
-            "args": [os.path.join(os.path.dirname(os.path.abspath(__file__)), "mcp_server.py")],
+            "args": [str(Path(__file__).resolve().parent / "mcp_server.py")],
             "transport": "stdio",
         }
-    }).get_tools()
-)
+    })
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        return pool.submit(asyncio.run, client.get_tools()).result()
+
 
 def build_agent(llm=None):
     """Build the agent. Uses the default model from config.py unless llm is given."""
     return create_agent(
         model=llm or get_chat_model(),
-        tools=[get_order_status, get_refund_policy] + _mcp_tools,
+        tools=[get_order_status, get_refund_policy] + load_mcp_tools(),
         system_prompt=(
             "You are a friendly customer-support agent. "
             "Use the available tools to answer order and refund questions. "
@@ -59,7 +69,10 @@ def build_agent(llm=None):
     )
 
 
-agent = build_agent()
+@cache
+def default_agent():
+    """The agent support_agent() runs, built on first use."""
+    return build_agent()
 
 
 # --- (2) NEW: a single shared callback handler ----------------------------
@@ -72,7 +85,7 @@ deepeval_callback = CallbackHandler()
 def support_agent(user_input: str) -> str:
     """Run the agent on a user message and return the final reply."""
     # --- (3) NEW: pass the callback handler in the .invoke() config ------
-    result = agent.invoke(
+    result = default_agent().invoke(
         {"messages": [{"role": "user", "content": user_input}]},
         config={"callbacks": [deepeval_callback]},
     )

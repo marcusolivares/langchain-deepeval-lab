@@ -159,8 +159,8 @@ evals/test_*.py         the eval suites above
 - **DeepEval's Synthesizer embeds with OpenAI**, so `test_agent_synthesized`
   needs `OPENAI_API_KEY` even when Claude is the judge.
 - **The Voyage AI free tier allows 3 requests per minute.** `rag_agent.py`
-  embeds its documents on import, so repeated runs within a minute are
-  rate-limited.
+  embeds its documents on the first search and each query after that, so
+  repeated runs within a minute are rate-limited.
 - **Windows:** set `PYTHONIOENCODING=utf-8` when piping output, or emoji in
   model replies crash the cp1252 console encoder.
 

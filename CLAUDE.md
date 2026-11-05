@@ -77,7 +77,7 @@ Switch vendor per run without editing `.env`: `LLM_PROVIDER=openai python agent_
 - `build_model(llm=None)` in `chatbot.py` (binds the shop tools)
 - `get_judge(provider=JUDGE_PROVIDER)` in `evals/common.py` (`AnthropicModel` or `OpenAIModel`)
 
-Each module builds its default instance at import time (`agent = build_agent()`), so the entry points (`support_agent`, `rag_support_agent`, `chat`) keep a one-argument signature. Replies are read with `message.text`, not `.content`, because Claude can return a list of content blocks.
+Each module keeps a default instance so the entry points (`support_agent`, `rag_support_agent`, `chat`) keep a simple signature. Anything that calls out is built on first use, not at import: `agent_instrumented.default_agent()` (which starts the MCP server via `load_mcp_tools()`, in a worker thread so it never touches DeepEval's event loop) and `rag_agent.get_vector_store()` (which embeds the documents). Both are `functools.cache`d. Replies are read with `message.text`, not `.content`, because Claude can return a list of content blocks.
 
 **Agent instrumentation pattern** (`agent_instrumented.py` and `rag_agent.py`):
 1. `CallbackHandler()` — captures every LangChain LLM/tool span automatically
@@ -125,7 +125,7 @@ The eval side adds the rest with `traced()` from `evals/common.py`: `@observe(na
 
 - **`test_agent_untraced.py` scores low on purpose**: it passes a plain `LLMTestCase` with no trace, so the judge cannot see the tool call and assumes the answer is made up. `test_agent_tracing.py` runs the same check on a trace and passes. Kept as a baseline that shows why trace-level evals matter.
 - **Synthesizer needs OpenAI**: DeepEval has no Anthropic or Voyage embedder, so `test_agent_synthesized.py` embeds `policies.txt` with OpenAI even when the judge is Claude.
-- **Voyage free tier is 3 requests/minute**: `rag_agent.py` embeds its 9 documents on import, so repeated RAG runs within a minute hit `RateLimitError` until a payment method is added.
+- **Voyage free tier is 3 requests/minute**: `rag_agent.py` embeds its 9 documents on the first search (one request) and each search embeds its query, so repeated RAG runs within a minute hit `RateLimitError` until a payment method is added.
 - **Windows console encoding**: when stdout is piped, Python on Windows encodes with cp1252 and crashes on emoji in model replies. Set `PYTHONIOENCODING=utf-8`.
 - **`create_react_agent` deprecation**: migrated to `from langchain.agents import create_agent` with `system_prompt=` replacing `prompt=`. Requires the `langchain` base package.
 - **Old `_make_hashable` patch**: DeepEval 4.0.4 crashed `ToolCorrectnessMetric` on unhashable `ToolMessage` objects and was patched by hand in the venv. DeepEval 4.3.1 runs `test_agent_tracing.py` without the patch.

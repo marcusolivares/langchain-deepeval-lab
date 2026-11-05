@@ -19,6 +19,8 @@ What's new vs agent_instrumented.py:
     Precision/Recall) can run
 """
 
+from functools import cache
+
 from langchain_core.messages import ToolMessage
 from langchain_core.tools import tool
 from langchain_core.vectorstores import InMemoryVectorStore
@@ -75,11 +77,15 @@ POLICY_DOCS = [
 
 
 # ---------------------------------------------------------------------------
-# Build the vector store once at import time.
+# Build the vector store once, on the first search, so importing this module
+# makes no embedding call (the Voyage free tier allows 3 requests/minute).
 # ---------------------------------------------------------------------------
-embeddings = VoyageAIEmbeddings(model="voyage-4-lite")
-vector_store = InMemoryVectorStore(embedding=embeddings)
-vector_store.add_texts(POLICY_DOCS)
+@cache
+def get_vector_store() -> InMemoryVectorStore:
+    """Embed POLICY_DOCS into an in-memory vector store and return it."""
+    store = InMemoryVectorStore(embedding=VoyageAIEmbeddings(model="voyage-4-lite"))
+    store.add_texts(POLICY_DOCS)
+    return store
 
 
 # ---------------------------------------------------------------------------
@@ -90,7 +96,7 @@ vector_store.add_texts(POLICY_DOCS)
 @tool(response_format="content_and_artifact")
 def search_policies(query: str) -> tuple[str, list[str]]:
     """Search the customer-support knowledge base for policy information."""
-    docs = vector_store.similarity_search(query, k=3)
+    docs = get_vector_store().similarity_search(query, k=3)
     chunks = [doc.page_content for doc in docs]
     return "\n\n".join(chunks), chunks
 
