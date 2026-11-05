@@ -1,0 +1,37 @@
+#!/bin/sh
+# Rejects commit messages that don't follow Conventional Commits 1.0.0.
+# https://www.conventionalcommits.org/en/v1.0.0/
+#
+# Enable once per clone:  git config core.hooksPath .githooks
+
+# Drop git's comment lines and any leading blank lines.
+msg=$(grep -v '^#' "$1" | sed '/./,$!d')
+subject=$(printf '%s\n' "$msg" | sed -n '1p')
+second=$(printf '%s\n' "$msg" | sed -n '2p')
+
+# Messages git writes itself.
+case "$subject" in
+  "Merge "* | "Revert \""* | "fixup! "* | "squash! "* | "amend! "*) exit 0 ;;
+esac
+
+fail() {
+  cat >&2 <<EOF
+commit-msg: $1
+  got:      $subject
+  expected: <type>[(scope)][!]: <description>
+  types:    build chore ci docs feat fix perf refactor revert style test
+  example:  feat(chatbot): select the LLM provider from config.py
+See https://www.conventionalcommits.org/en/v1.0.0/
+EOF
+  exit 1
+}
+
+pattern='^(build|chore|ci|docs|feat|fix|perf|refactor|revert|style|test)(\([[:alnum:]._/-]+\))?!?: [^[:space:]]'
+printf '%s\n' "$subject" | grep -Eq "$pattern" \
+  || fail "subject does not follow Conventional Commits 1.0.0"
+
+case "$second" in
+  *[![:space:]]*) fail "leave a blank line between the subject and the body" ;;
+esac
+
+exit 0

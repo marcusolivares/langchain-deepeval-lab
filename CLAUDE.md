@@ -16,6 +16,12 @@ VOYAGE_API_KEY=...                  # RAG agent embeddings (Voyage AI)
 CONFIDENT_API_KEY=confident_us_...  # optional: stream traces to Confident AI dashboard
 ```
 
+## Commits
+
+- Every commit message follows [Conventional Commits 1.0.0](https://www.conventionalcommits.org/en/v1.0.0/): `<type>[(scope)][!]: <description>`. Mark breaking changes with `!` and a `BREAKING CHANGE:` footer.
+- Keep commits atomic: one logical change per commit, and every commit leaves the project runnable.
+- `.githooks/commit-msg` rejects non-conforming messages. Enable it once per clone: `git config core.hooksPath .githooks`.
+
 ## Running
 
 ```bash
