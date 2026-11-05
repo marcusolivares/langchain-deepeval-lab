@@ -26,49 +26,13 @@ from langchain_anthropic import ChatAnthropic
 from langchain_mcp_adapters.client import MultiServerMCPClient
 
 load_dotenv()
-from langchain_core.tools import tool
 from langchain.agents import create_agent
+
+from shop_tools import get_order_status, get_refund_policy
 
 # --- (1) NEW: import DeepEval tracing primitives --------------------------
 from deepeval.integrations.langchain import CallbackHandler
 from deepeval.tracing.context import update_current_trace
-
-
-# ---------------------------------------------------------------------------
-# Same fake data as agent_plain.py.
-# ---------------------------------------------------------------------------
-ORDERS = {
-    "ORD-1042": {"status": "Shipped",    "eta": "2026-05-13", "category": "Electronics"},
-    "ORD-2099": {"status": "Delivered",  "eta": "2026-05-08", "category": "clothing"},
-    "ORD-7777": {"status": "Processing", "eta": "2026-05-15", "category": "food"},
-}
-
-REFUND_POLICIES = {
-    "electronics": "Electronics can be returned within 15 days, unopened.",
-    "clothing":    "Clothing can be returned within 30 days with tags attached.",
-    "food":        "Food items are non-returnable for safety reasons.",
-}
-
-
-# ---------------------------------------------------------------------------
-# Same tools as agent_plain.py.
-# ---------------------------------------------------------------------------
-@tool
-def get_order_status(order_id: str) -> str:
-    """Look up the shipping status of an order by its ID."""
-    order = ORDERS.get(order_id.upper())
-    if not order:
-        return f"No order found with ID {order_id}."
-    return f"Order {order_id} is {order['status']}. ETA: {order['eta']}."
-
-
-@tool
-def get_refund_policy(category: str) -> str:
-    """Return the refund policy for a product category."""
-    policy = REFUND_POLICIES.get(category.lower())
-    if not policy:
-        return f"No refund policy on file for '{category}'."
-    return policy
 
 
 # ---------------------------------------------------------------------------
