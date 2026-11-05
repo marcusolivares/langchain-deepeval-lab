@@ -9,9 +9,9 @@ What changed vs agent_plain.py? Only 4 things — all marked with "NEW":
   (2) Build the callback handler once (no metrics baked in — metrics are
       attached by the test file at run time)
   (3) Pass it via config={"callbacks": [...]} on .invoke()
-  (4) (Optional) Add @observe on the outer Python wrapper so any
-      non-LangChain code we add later (guardrails, post-processing)
-      also shows up as spans
+  (4) Call update_current_trace(output=reply) so the trace carries the
+      clean reply string. The @observe wrapper that opens the trace lives
+      on the eval side (traced() in evals/common.py)
 
 That's it. Four lines, and now QA can run component-level evals
 without ever touching this file again.
