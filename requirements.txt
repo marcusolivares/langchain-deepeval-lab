@@ -2,6 +2,7 @@ deepeval
 langchain
 langchain-voyageai
 langchain-anthropic
+langchain-openai
 langchain-mcp-adapters
 langgraph
 langchain-core

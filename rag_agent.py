@@ -8,7 +8,7 @@ Architecture:
   - Knowledge base: 9 policy documents stored as embeddings (Voyage AI)
   - Vector store: langchain_core InMemoryVectorStore (no external DB needed)
   - Tool: search_policies(query) — semantic search, returns top-3 chunks
-  - LLM: Claude Sonnet 4.6 (same as agent_plain.py, just with retrieval instead of hard-coded data)
+  - LLM: from config.py, Claude by default (same as agent_plain.py, just with retrieval instead of hard-coded data)
   - Instrumentation: DeepEval CallbackHandler + @observe, same 4-line pattern
 
 What's new vs agent_instrumented.py:
@@ -17,15 +17,12 @@ What's new vs agent_instrumented.py:
     so that RAG metrics (Faithfulness, Contextual Precision/Recall) can run
 """
 
-from dotenv import load_dotenv
-
-load_dotenv()
-
 from langchain_core.tools import tool
 from langchain_core.vectorstores import InMemoryVectorStore
-from langchain_anthropic import ChatAnthropic
 from langchain_voyageai import VoyageAIEmbeddings
 from langchain.agents import create_agent
+
+from config import get_chat_model
 
 from deepeval.integrations.langchain import CallbackHandler
 from deepeval.tracing.context import update_current_trace
@@ -103,17 +100,20 @@ def search_policies(query: str) -> str:
 # ---------------------------------------------------------------------------
 # Agent
 # ---------------------------------------------------------------------------
-llm = ChatAnthropic(model="claude-sonnet-4-6", temperature=0)
+def build_agent(llm=None):
+    """Build the RAG agent. Uses the default model from config.py unless llm is given."""
+    return create_agent(
+        model=llm or get_chat_model(),
+        tools=[search_policies],
+        system_prompt=(
+            "You are a friendly customer-support agent. "
+            "Use the search_policies tool to look up refund, shipping, and order policies. "
+            "Answer only from the retrieved information. Keep replies concise."
+        ),
+    )
 
-agent = create_agent(
-    model=llm,
-    tools=[search_policies],
-    system_prompt=(
-        "You are a friendly customer-support agent. "
-        "Use the search_policies tool to look up refund, shipping, and order policies. "
-        "Answer only from the retrieved information. Keep replies concise."
-    ),
-)
+
+agent = build_agent()
 
 # DeepEval callback handler — captures LangChain spans automatically.
 deepeval_callback = CallbackHandler()
@@ -131,7 +131,7 @@ def rag_support_agent(user_input: str) -> str:
         {"messages": [{"role": "user", "content": user_input}]},
         config={"callbacks": [deepeval_callback]},
     )
-    reply = result["messages"][-1].content
+    reply = result["messages"][-1].text
 
     # Set clean reply string and retrieved chunks on the trace.
     update_current_trace(

@@ -21,13 +21,10 @@ import asyncio
 import os
 import sys
 
-from dotenv import load_dotenv
-from langchain_anthropic import ChatAnthropic
 from langchain_mcp_adapters.client import MultiServerMCPClient
-
-load_dotenv()
 from langchain.agents import create_agent
 
+from config import get_chat_model
 from shop_tools import get_order_status, get_refund_policy
 
 # --- (1) NEW: import DeepEval tracing primitives --------------------------
@@ -38,8 +35,6 @@ from deepeval.tracing.context import update_current_trace
 # ---------------------------------------------------------------------------
 # Same agent as agent_plain.py.
 # ---------------------------------------------------------------------------
-llm = ChatAnthropic(model="claude-sonnet-4-6", temperature=0)
-
 # Load one extra tool from the MCP server at startup and merge it in.
 _mcp_tools = asyncio.run(
     MultiServerMCPClient({
@@ -51,15 +46,20 @@ _mcp_tools = asyncio.run(
     }).get_tools()
 )
 
-agent = create_agent(
-    model=llm,
-    tools=[get_order_status, get_refund_policy] + _mcp_tools,
-    system_prompt=(
-        "You are a friendly customer-support agent. "
-        "Use the available tools to answer order and refund questions. "
-        "Keep replies short and helpful."
-    ),
-)
+def build_agent(llm=None):
+    """Build the agent. Uses the default model from config.py unless llm is given."""
+    return create_agent(
+        model=llm or get_chat_model(),
+        tools=[get_order_status, get_refund_policy] + _mcp_tools,
+        system_prompt=(
+            "You are a friendly customer-support agent. "
+            "Use the available tools to answer order and refund questions. "
+            "Keep replies short and helpful."
+        ),
+    )
+
+
+agent = build_agent()
 
 
 # --- (2) NEW: a single shared callback handler ----------------------------
@@ -76,7 +76,7 @@ def support_agent(user_input: str) -> str:
         {"messages": [{"role": "user", "content": user_input}]},
         config={"callbacks": [deepeval_callback]},
     )
-    reply = result["messages"][-1].content
+    reply = result["messages"][-1].text
     update_current_trace(output=reply)
     return reply
 
