@@ -1,23 +1,12 @@
 #Assertion - Judge LLM (Expected output) -> Actual output
-import sys, os
-
-sys.path.insert( 0, os.path.dirname( os.path.dirname( os.path.abspath( __file__ ) ) ) )
-from deepeval.contextvars import get_current_golden
 from deepeval.dataset import EvaluationDataset, Golden
 from deepeval.metrics import GEval
 from deepeval.test_case import SingleTurnParams
-from deepeval.tracing import observe, update_current_trace
 from agent_instrumented import support_agent as _support_agent
+from evals.common import ASYNC_CONFIG, get_judge, traced
 
 
-@observe(name="support_agent")
-def support_agent(user_input: str) -> str:
-    golden = get_current_golden()
-    if golden:
-        if golden.expected_output:
-            update_current_trace( expected_output=golden.expected_output )
-
-    return _support_agent( user_input )
+support_agent = traced(_support_agent, name="support_agent")
 
 
 correctness = GEval(
@@ -27,7 +16,7 @@ correctness = GEval(
         "as the expected output. Minor wording differences are acceptable; "
         "missing or wrong facts are not."
     ),
-    model="gpt-4o",
+    model=get_judge(),
     threshold=0.79,
     evaluation_params=[
         SingleTurnParams.INPUT,
@@ -40,7 +29,7 @@ dataset = EvaluationDataset(goldens = [
            expected_output= "order ORD-1042 is shipped and will arrive by May 13th")
 ])
 
-for golden in dataset.evals_iterator(metrics=[correctness]):
+for golden in dataset.evals_iterator(metrics=[correctness], async_config=ASYNC_CONFIG):
     support_agent(golden.input)
 
 

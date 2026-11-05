@@ -1,12 +1,9 @@
-import sys, os
-
-sys.path.insert( 0, os.path.dirname( os.path.dirname( os.path.abspath( __file__ ) ) ) )
-
 from deepeval.evaluate import evaluate
 from deepeval.metrics import GEval, ConversationalGEval
 from deepeval.test_case import Turn, ConversationalTestCase, MultiTurnParams
 
 from chatbot import chat
+from evals.common import ASYNC_CONFIG, get_judge
 
 turns = []
 history = []
@@ -27,7 +24,7 @@ correctness = ConversationalGEval(
          "Did the chatbot fully resolve the customer's issue? "
       "It should use tools when needed and provide accurate answers."
     ),
-    model="gpt-4o",
+    model=get_judge(),
     threshold=0.80,
     evaluation_params=[
         MultiTurnParams.ROLE,
@@ -39,4 +36,4 @@ test_case = ConversationalTestCase(
     turns = turns
 )
 
-evaluate(test_cases = [test_case], metrics = [correctness])
+evaluate(test_cases = [test_case], metrics = [correctness], async_config=ASYNC_CONFIG)

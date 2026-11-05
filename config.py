@@ -3,11 +3,14 @@ config.py
 =========
 The one place that decides which LLM vendor the project talks to.
 
-The agents and the chatbot ask this module for a model instead of
-hard-coding one, so switching vendor is a .env change, not a code change:
+The agents, the chatbot and the eval judges ask this module for a model
+instead of hard-coding one, so switching vendor is a .env change, not a
+code change:
 
     LLM_PROVIDER=anthropic   # default: Claude
     LLM_PROVIDER=openai      # GPT-4o
+    JUDGE_PROVIDER=openai    # optional: judge evals with a different vendor
+                             # (defaults to LLM_PROVIDER)
 
 To use a specific model in code instead, pass it in explicitly,
 e.g. build_agent(get_chat_model("openai")).
@@ -26,6 +29,7 @@ MODELS = {
 }
 
 PROVIDER = os.getenv("LLM_PROVIDER", "anthropic")
+JUDGE_PROVIDER = os.getenv("JUDGE_PROVIDER", PROVIDER)
 
 
 def get_chat_model(provider: str = PROVIDER):

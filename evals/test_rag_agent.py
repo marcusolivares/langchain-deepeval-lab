@@ -3,26 +3,14 @@
 # 5 docs  - LLM(
 
 #Recall - 10 docs-> Top 2 documents = 30% noise
-import os
-import sys
-
-sys.path.insert( 0, os.path.dirname( os.path.dirname( os.path.abspath( __file__ ) ) ) )
-from deepeval.contextvars import get_current_golden
-from deepeval.dataset import Golden
 from deepeval.dataset import Golden, EvaluationDataset
 from deepeval.metrics import ContextualPrecisionMetric, ContextualRecallMetric, AnswerRelevancyMetric, \
     FaithfulnessMetric
-from deepeval.tracing import observe, update_current_trace
 
+from evals.common import ASYNC_CONFIG, get_judge, traced
 from rag_agent import rag_support_agent as _rag_support_agent
 
-@observe(name="rag_support_agent" )
-def rag_support_agent(user_input: str) -> str:
-    golden = get_current_golden()
-    if golden:
-        if golden.expected_output:
-            update_current_trace( expected_output=golden.expected_output )
-    return _rag_support_agent(user_input)
+rag_support_agent = traced(_rag_support_agent, name="rag_support_agent")
 
 
 dataset = EvaluationDataset(goldens = [
@@ -42,27 +30,29 @@ dataset = EvaluationDataset(goldens = [
         ),
     ),])
 
+judge = get_judge()
+
 precisionMetric = ContextualPrecisionMetric(
     threshold=0.7,
-    model = "gpt-4o"
+    model = judge
 
 )
 recallMetric = ContextualRecallMetric(
     threshold=0.7,
-    model="gpt-4o",
+    model=judge,
     include_reason=True
 )
 
 relevancyMetric = AnswerRelevancyMetric(
     threshold=0.7,
-    model="gpt-4o",
+    model=judge,
     include_reason=True
 )
 
 
 faithfulMetric = FaithfulnessMetric(
     threshold=0.7,
-    model="gpt-4o",
+    model=judge,
     include_reason=True
 )
 
@@ -70,7 +60,7 @@ faithfulMetric = FaithfulnessMetric(
 
 
 
-for golden in dataset.evals_iterator(metrics=[precisionMetric,recallMetric,relevancyMetric,faithfulMetric]):
+for golden in dataset.evals_iterator(metrics=[precisionMetric,recallMetric,relevancyMetric,faithfulMetric], async_config=ASYNC_CONFIG):
     rag_support_agent(golden.input)
 
 
