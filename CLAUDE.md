@@ -95,6 +95,8 @@ The eval side adds the rest with `traced()` from `evals/common.py`: `@observe(na
 
 **Every metric gets the judge explicitly** (`model=judge`). Metrics left without a model fall back to DeepEval's default OpenAI model, which breaks a Claude-only setup.
 
+**Claude effort, not temperature**: Claude Sonnet 5.5 always thinks and rejects a non-default `temperature`, so token spend is tuned with `effort`, set to `low` everywhere: the bots via the `get_chat_model()` default (pass `effort=` to raise it) and the judge via `generation_kwargs` in `get_judge()`. The bots and the judge only do short lookups and classification, where `low` mostly skips thinking. GPT-4o has no effort setting and keeps `temperature=0`. DeepEval only knows Sonnet 5.5's prices from 4.3.3 on; older versions run it without cost tracking.
+
 **Confident AI tracing**: adding `CONFIDENT_API_KEY` to `.env` is the only change needed to enable cloud tracing — no code changes required. DeepEval reads it automatically.
 
 **Chatbot evaluation pattern** (`evals/test_chatbot*.py`):

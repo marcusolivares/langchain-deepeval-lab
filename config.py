@@ -24,7 +24,7 @@ from langchain.chat_models import init_chat_model
 load_dotenv()
 
 MODELS = {
-    "anthropic": "claude-sonnet-4-6",
+    "anthropic": "claude-sonnet-5-5",
     "openai":    "gpt-4o",
 }
 
@@ -32,6 +32,15 @@ PROVIDER = os.getenv("LLM_PROVIDER", "anthropic")
 JUDGE_PROVIDER = os.getenv("JUDGE_PROVIDER", PROVIDER)
 
 
-def get_chat_model(provider: str = PROVIDER):
-    """Return a LangChain chat model for the given provider."""
+def get_chat_model(provider: str = PROVIDER, effort: str = "low"):
+    """Return a LangChain chat model for the given provider.
+
+    Claude Sonnet 5.5 always thinks before answering and rejects a non-default
+    temperature, so its token spend is tuned with `effort` ("low" to "max")
+    instead. The bots only do short lookups, where "low" mostly skips thinking;
+    raise it per call if quality drops. GPT-4o has no effort setting and keeps
+    temperature=0.
+    """
+    if provider == "anthropic":
+        return init_chat_model(MODELS[provider], model_provider=provider, effort=effort)
     return init_chat_model(MODELS[provider], model_provider=provider, temperature=0)

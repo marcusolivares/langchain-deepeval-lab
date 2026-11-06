@@ -21,7 +21,9 @@ def get_judge(provider: str = JUDGE_PROVIDER):
     """Return the DeepEval judge model for the given provider."""
     model = MODELS[provider]
     if provider == "anthropic":
-        return AnthropicModel(model=model)
+        # Judging is short classification and extraction work, so low effort
+        # keeps Claude's thinking (and its tokens) small.
+        return AnthropicModel(model=model, generation_kwargs={"output_config": {"effort": "low"}})
     return OpenAIModel(model=model)
 
 
