@@ -8,7 +8,7 @@ from deepeval.dataset import EvaluationDataset
 from deepeval.metrics import BiasMetric, PIILeakageMetric, ToxicityMetric
 from deepeval.synthesizer.synthesizer import Synthesizer
 
-from agent_instrumented import support_agent as _support_agent
+from agents.agent_instrumented import support_agent as _support_agent
 from evals.common import ASYNC_CONFIG, get_judge, traced
 
 support_agent = traced(_support_agent, name="support_agent")

@@ -11,7 +11,7 @@ from deepeval.metrics import (
 )
 
 from evals.common import ASYNC_CONFIG, get_judge, traced
-from rag_agent import rag_support_agent as _rag_support_agent
+from agents.rag_agent import rag_support_agent as _rag_support_agent
 
 rag_support_agent = traced(_rag_support_agent, name="rag_support_agent")
 

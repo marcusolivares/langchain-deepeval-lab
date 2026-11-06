@@ -4,7 +4,7 @@ from deepeval.dataset import EvaluationDataset, Golden
 from deepeval.metrics import TaskCompletionMetric, ToolCorrectnessMetric
 from deepeval.test_case import ToolCall
 
-from agent_instrumented import support_agent as _support_agent
+from agents.agent_instrumented import support_agent as _support_agent
 from evals.common import ASYNC_CONFIG, get_judge, traced
 
 support_agent = traced(_support_agent, name="support_agent")

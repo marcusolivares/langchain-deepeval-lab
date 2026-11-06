@@ -27,13 +27,13 @@ Usage:
     reply, history, tools = chat("What about the refund policy?", history)
 
 How to run standalone:
-    python chatbot.py
+    python -m agents.chatbot
 """
 
 from langchain_core.messages import BaseMessage, HumanMessage, SystemMessage, ToolMessage
 
 from config import get_chat_model
-from shop_tools import get_order_status, get_refund_policy
+from agents.shop_tools import get_order_status, get_refund_policy
 
 TOOLS = [get_order_status, get_refund_policy]
 TOOLS_BY_NAME = {t.name: t for t in TOOLS}

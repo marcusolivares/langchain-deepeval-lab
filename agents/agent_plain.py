@@ -16,7 +16,7 @@ to call and to compose the answer.
 from langchain.agents import create_agent
 
 from config import get_chat_model
-from shop_tools import get_order_status, get_refund_policy
+from agents.shop_tools import get_order_status, get_refund_policy
 
 
 # ---------------------------------------------------------------------------

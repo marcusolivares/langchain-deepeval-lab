@@ -4,7 +4,7 @@ mcp_server.py
 MCP server exposing one tool used by agent_instrumented.py.
 
 Run standalone to verify:
-    python mcp_server.py
+    python -m agents.mcp_server
 """
 
 from mcp.server.fastmcp import FastMCP

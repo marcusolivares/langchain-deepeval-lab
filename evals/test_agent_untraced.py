@@ -6,7 +6,7 @@ from deepeval.evaluate import evaluate
 from deepeval.metrics import TaskCompletionMetric
 from deepeval.test_case import LLMTestCase
 
-from agent_instrumented import support_agent
+from agents.agent_instrumented import support_agent
 from evals.common import ASYNC_CONFIG, get_judge
 
 actual_output = support_agent("Where is my order ORD-1042?")

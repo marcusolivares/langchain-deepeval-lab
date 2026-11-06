@@ -145,19 +145,20 @@ What the failures show:
 pip install -r requirements.txt
 cp .env.example .env          # then fill in your keys
 
-python agent_instrumented.py  # run a bot on its own
-python chatbot.py             # interactive; type 'quit' to exit
+python -m agents.agent_instrumented   # run a bot on its own
+python -m agents.chatbot              # interactive; type 'quit' to exit
 
-python -m evals.test_agent_tracing   # run an eval suite
+python -m evals.test_agent_tracing    # run an eval suite
 ```
 
-Run eval scripts from the project root as modules (`python -m evals.<name>`).
+Run the bots and the eval scripts from the project root as modules
+(`python -m agents.<name>`, `python -m evals.<name>`).
 
 To switch vendor for a single run:
 
 ```bash
-LLM_PROVIDER=openai python agent_instrumented.py            # bash
-$env:LLM_PROVIDER="openai"; python agent_instrumented.py    # PowerShell
+LLM_PROVIDER=openai python -m agents.agent_instrumented            # bash
+$env:LLM_PROVIDER="openai"; python -m agents.agent_instrumented    # PowerShell
 ```
 
 To view traces and scores in a dashboard, run `deepeval login` or set
@@ -183,16 +184,16 @@ Model IDs live in `MODELS` in `config.py`.
 ## Project layout
 
 ```
-config.py               vendor and model selection
-shop_tools.py           demo order/refund data and the two shared @tool functions
-agent_plain.py          tool-calling agent, no eval code
-agent_instrumented.py   the same agent with DeepEval tracing and an MCP tool
-mcp_server.py           MCP server exposing get_shipping_options
-rag_agent.py            RAG agent: in-memory vector store + Voyage AI embeddings
-chatbot.py              multi-turn chatbot with a manual tool-call loop
-policies.txt            source document for synthetic goldens
-evals/common.py         judge factory, async config, tracing wrapper
-evals/test_*.py         the eval suites above
+config.py                      vendor and model selection (shared by agents and evals)
+agents/shop_tools.py           demo order/refund data and the two shared @tool functions
+agents/agent_plain.py          tool-calling agent, no eval code
+agents/agent_instrumented.py   the same agent with DeepEval tracing and an MCP tool
+agents/mcp_server.py           MCP server exposing get_shipping_options
+agents/rag_agent.py            RAG agent: in-memory vector store + Voyage AI embeddings
+agents/chatbot.py              multi-turn chatbot with a manual tool-call loop
+policies.txt                   source document for synthetic goldens
+evals/common.py                judge factory, async config, tracing wrapper
+evals/test_*.py                the eval suites above
 ```
 
 ---

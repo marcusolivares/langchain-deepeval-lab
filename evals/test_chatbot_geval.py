@@ -7,7 +7,7 @@ from deepeval.evaluate import evaluate
 from deepeval.metrics import ConversationalGEval
 from deepeval.test_case import ConversationalTestCase, MultiTurnParams
 
-from chatbot import chat
+from agents.chatbot import chat
 from evals.common import ASYNC_CONFIG, SUPPORT_CONVERSATION, get_judge, run_conversation
 
 turns = run_conversation(chat, SUPPORT_CONVERSATION)

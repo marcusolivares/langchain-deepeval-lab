@@ -27,7 +27,7 @@ from langchain_mcp_adapters.client import MultiServerMCPClient
 from langchain.agents import create_agent
 
 from config import get_chat_model
-from shop_tools import get_order_status, get_refund_policy
+from agents.shop_tools import get_order_status, get_refund_policy
 
 # --- (1) NEW: import DeepEval tracing primitives --------------------------
 from deepeval.integrations.langchain import CallbackHandler

@@ -27,14 +27,14 @@ CONFIDENT_API_KEY=confident_us_...  # optional: stream traces to Confident AI da
 
 ## Running
 
-Run everything from the project root. Eval scripts are run as modules (`python -m evals.<name>`) so they can import `config`, the agents and `evals.common`.
+Run everything from the project root, as modules (`python -m agents.<name>`, `python -m evals.<name>`), so the root-level `config` and the `agents` and `evals` packages can be imported. Running a file by path (`python agents/agent_plain.py`) fails with `ModuleNotFoundError`.
 
 ```bash
 # Sanity-check the bots on their own
-python agent_plain.py
-python agent_instrumented.py
-python rag_agent.py
-python chatbot.py                               # interactive, type 'quit' to exit
+python -m agents.agent_plain
+python -m agents.agent_instrumented
+python -m agents.rag_agent
+python -m agents.chatbot                        # interactive, type 'quit' to exit
 
 # Phase 1 — tool-calling support agent
 python -m evals.test_agent_untraced             # TaskCompletion on a plain test case (no trace)
@@ -53,19 +53,20 @@ python -m evals.test_chatbot_geval              # ConversationalGEval with custo
 python -m evals.test_agent_synthesized          # Synthesizer + Bias + Toxicity + PIILeakage
 ```
 
-Switch vendor per run without editing `.env`: `LLM_PROVIDER=openai python agent_plain.py` (bash) or `$env:LLM_PROVIDER="openai"; python agent_plain.py` (PowerShell).
+Switch vendor per run without editing `.env`: `LLM_PROVIDER=openai python -m agents.agent_plain` (bash) or `$env:LLM_PROVIDER="openai"; python -m agents.agent_plain` (PowerShell).
 
 ## Project structure
 
 | File | Purpose |
 |---|---|
-| `config.py` | The one place the LLM vendor is chosen. Reads `LLM_PROVIDER` / `JUDGE_PROVIDER`, holds the model IDs in `MODELS`, and builds chat models with `get_chat_model()` (`init_chat_model` under the hood). |
-| `shop_tools.py` | The ShopEasy demo data (`ORDERS`, `REFUND_POLICIES`) and the two `@tool` functions `get_order_status` and `get_refund_policy`, shared by the agents and the chatbot. |
-| `agent_plain.py` | Baseline LangChain agent with the two shop tools. No eval code; kept as a baseline to diff against `agent_instrumented.py`. |
-| `agent_instrumented.py` | The same agent plus DeepEval instrumentation and one extra tool loaded from `mcp_server.py`. The agent evals import `support_agent` from here. |
-| `mcp_server.py` | MCP server exposing `get_shipping_options`, started over stdio by `agent_instrumented.py`. |
-| `rag_agent.py` | Agent backed by a 9-document in-memory vector store (`InMemoryVectorStore` + Voyage AI embeddings). One tool: `search_policies`. Retrieved chunks are forwarded to the trace as `retrieval_context`. |
-| `chatbot.py` | Multi-turn chatbot that runs its own tool-call loop over a model with `bind_tools()`, returning `(reply, history, tools_called)` per turn. |
+| `config.py` | The one place the LLM vendor is chosen. Reads `LLM_PROVIDER` / `JUDGE_PROVIDER`, holds the model IDs in `MODELS`, and builds chat models with `get_chat_model()` (`init_chat_model` under the hood). Stays at the root because both `agents/` and `evals/` import it. |
+| `agents/` | The bots under evaluation. The evals import them as `agents.<module>`. |
+| `agents/shop_tools.py` | The ShopEasy demo data (`ORDERS`, `REFUND_POLICIES`) and the two `@tool` functions `get_order_status` and `get_refund_policy`, shared by the agents and the chatbot. |
+| `agents/agent_plain.py` | Baseline LangChain agent with the two shop tools. No eval code; kept as a baseline to diff against `agent_instrumented.py`. |
+| `agents/agent_instrumented.py` | The same agent plus DeepEval instrumentation and one extra tool loaded from `mcp_server.py`. The agent evals import `support_agent` from here. |
+| `agents/mcp_server.py` | MCP server exposing `get_shipping_options`, started over stdio by `agent_instrumented.py` (by file path, next to it). |
+| `agents/rag_agent.py` | Agent backed by a 9-document in-memory vector store (`InMemoryVectorStore` + Voyage AI embeddings). One tool: `search_policies`. Retrieved chunks are forwarded to the trace as `retrieval_context`. |
+| `agents/chatbot.py` | Multi-turn chatbot that runs its own tool-call loop over a model with `bind_tools()`, returning `(reply, history, tools_called)` per turn. |
 | `policies.txt` | Source document for `test_agent_synthesized.py`. |
 | `evals/common.py` | Shared eval helpers: `get_judge()`, `ASYNC_CONFIG`, `traced()`, and the chatbot conversation driver `run_conversation()`. |
 | `evals/test_*.py` | The eval scripts listed under Running. |
