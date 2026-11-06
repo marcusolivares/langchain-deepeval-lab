@@ -1,10 +1,10 @@
 """
 mcp_server.py
 =============
-MCP server exposing one tool used by agent_instrumented.py.
+MCP server exposing one tool used by agents/agent_instrumented.py.
 
 Run standalone to verify:
-    python -m agents.mcp_server
+    python -m agents.tools.mcp_server
 """
 
 from mcp.server.fastmcp import FastMCP

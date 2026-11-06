@@ -27,7 +27,7 @@ from langchain_mcp_adapters.client import MultiServerMCPClient
 from langchain.agents import create_agent
 
 from config import get_chat_model
-from agents.shop_tools import get_order_status, get_refund_policy
+from agents.tools.shop import get_order_status, get_refund_policy
 
 # --- (1) NEW: import DeepEval tracing primitives --------------------------
 from deepeval.integrations.langchain import CallbackHandler
@@ -48,7 +48,7 @@ def load_mcp_tools() -> list:
     client = MultiServerMCPClient({
         "shopease": {
             "command": sys.executable,
-            "args": [str(Path(__file__).resolve().parent / "mcp_server.py")],
+            "args": [str(Path(__file__).resolve().parent / "tools" / "mcp_server.py")],
             "transport": "stdio",
         }
     })

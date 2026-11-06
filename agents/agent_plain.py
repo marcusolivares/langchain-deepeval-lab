@@ -5,7 +5,7 @@ A simple customer-support agent built with LangChain.
 No evaluation code anywhere. This is what a developer would write
 if they'd never heard of DeepEval.
 
-The agent has two tools (defined in shop_tools.py):
+The agent has two tools (defined in tools/shop.py):
   - get_order_status(order_id)  -> shipping info
   - get_refund_policy(category) -> refund rules
 
@@ -16,7 +16,7 @@ to call and to compose the answer.
 from langchain.agents import create_agent
 
 from config import get_chat_model
-from agents.shop_tools import get_order_status, get_refund_policy
+from agents.tools.shop import get_order_status, get_refund_policy
 
 
 # ---------------------------------------------------------------------------

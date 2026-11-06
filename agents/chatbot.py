@@ -7,7 +7,7 @@ The LLM comes from config.py (Claude by default, GPT-4o with
 LLM_PROVIDER=openai). LangChain's bind_tools() translates the tools into
 each vendor's own tool-calling format, so one loop works for both.
 
-Tools available (shared with the agents via shop_tools.py):
+Tools available (shared with the agents via tools/shop.py):
   - get_order_status(order_id)   → real-time shipping status from in-memory DB
   - get_refund_policy(category)  → refund rules per product category
 
@@ -33,7 +33,7 @@ How to run standalone:
 from langchain_core.messages import BaseMessage, HumanMessage, SystemMessage, ToolMessage
 
 from config import get_chat_model
-from agents.shop_tools import get_order_status, get_refund_policy
+from agents.tools.shop import get_order_status, get_refund_policy
 
 TOOLS = [get_order_status, get_refund_policy]
 TOOLS_BY_NAME = {t.name: t for t in TOOLS}

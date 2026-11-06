@@ -185,12 +185,13 @@ Model IDs live in `MODELS` in `config.py`.
 
 ```
 config.py                      vendor and model selection (shared by agents and evals)
-agents/shop_tools.py           demo order/refund data and the two shared @tool functions
 agents/agent_plain.py          tool-calling agent, no eval code
 agents/agent_instrumented.py   the same agent with DeepEval tracing and an MCP tool
-agents/mcp_server.py           MCP server exposing get_shipping_options
-agents/rag_agent.py            RAG agent: in-memory vector store + Voyage AI embeddings
+agents/rag_agent.py            RAG agent: retrieves policies before answering
 agents/chatbot.py              multi-turn chatbot with a manual tool-call loop
+agents/tools/shop.py           demo order/refund data and the two shared @tool functions
+agents/tools/policy_search.py  RAG retriever: in-memory vector store + Voyage AI embeddings
+agents/tools/mcp_server.py     MCP server exposing get_shipping_options
 policies.txt                   source document for synthetic goldens
 evals/common.py                judge factory, async config, tracing wrapper
 evals/test_*.py                the eval suites above
@@ -202,7 +203,7 @@ evals/test_*.py                the eval suites above
 
 - **DeepEval's Synthesizer embeds with OpenAI**, so `test_agent_synthesized`
   needs `OPENAI_API_KEY` even when Claude is the judge.
-- **The Voyage AI free tier allows 3 requests per minute.** `rag_agent.py`
+- **The Voyage AI free tier allows 3 requests per minute.** The RAG agent
   embeds its documents on the first search and each query after that, so
   repeated runs within a minute are rate-limited.
 - **Windows:** set `PYTHONIOENCODING=utf-8` when piping output, or emoji in

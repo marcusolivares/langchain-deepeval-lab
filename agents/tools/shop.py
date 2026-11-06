@@ -1,6 +1,6 @@
 """
-shop_tools.py
-=============
+shop.py
+=======
 The ShopEasy demo data and the two tools every support bot shares:
   - get_order_status(order_id)  -> shipping info
   - get_refund_policy(category) -> refund rules

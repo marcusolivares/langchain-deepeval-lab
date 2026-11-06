@@ -61,12 +61,14 @@ Switch vendor per run without editing `.env`: `LLM_PROVIDER=openai python -m age
 |---|---|
 | `config.py` | The one place the LLM vendor is chosen. Reads `LLM_PROVIDER` / `JUDGE_PROVIDER`, holds the model IDs in `MODELS`, and builds chat models with `get_chat_model()` (`init_chat_model` under the hood). Stays at the root because both `agents/` and `evals/` import it. |
 | `agents/` | The bots under evaluation. The evals import them as `agents.<module>`. |
-| `agents/shop_tools.py` | The ShopEasy demo data (`ORDERS`, `REFUND_POLICIES`) and the two `@tool` functions `get_order_status` and `get_refund_policy`, shared by the agents and the chatbot. |
 | `agents/agent_plain.py` | Baseline LangChain agent with the two shop tools. No eval code; kept as a baseline to diff against `agent_instrumented.py`. |
-| `agents/agent_instrumented.py` | The same agent plus DeepEval instrumentation and one extra tool loaded from `mcp_server.py`. The agent evals import `support_agent` from here. |
-| `agents/mcp_server.py` | MCP server exposing `get_shipping_options`, started over stdio by `agent_instrumented.py` (by file path, next to it). |
-| `agents/rag_agent.py` | Agent backed by a 9-document in-memory vector store (`InMemoryVectorStore` + Voyage AI embeddings). One tool: `search_policies`. Retrieved chunks are forwarded to the trace as `retrieval_context`. |
+| `agents/agent_instrumented.py` | The same agent plus DeepEval instrumentation and one extra tool loaded from `tools/mcp_server.py`. The agent evals import `support_agent` from here. |
+| `agents/rag_agent.py` | Agent with one tool, `search_policies`. Retrieved chunks are forwarded to the trace as `retrieval_context`. |
 | `agents/chatbot.py` | Multi-turn chatbot that runs its own tool-call loop over a model with `bind_tools()`, returning `(reply, history, tools_called)` per turn. |
+| `agents/tools/` | Every tool the bots call. New tools go here, not in the agent modules. |
+| `agents/tools/shop.py` | The ShopEasy demo data (`ORDERS`, `REFUND_POLICIES`) and the two `@tool` functions `get_order_status` and `get_refund_policy`, shared by the agents and the chatbot. |
+| `agents/tools/policy_search.py` | The RAG retriever: 9 policy documents in an `InMemoryVectorStore` with Voyage AI embeddings, the `search_policies` tool, and `retrieved_chunks()`, which pulls the chunks out of a run's `ToolMessage` artifacts. |
+| `agents/tools/mcp_server.py` | MCP server exposing `get_shipping_options`, started over stdio by `agent_instrumented.py` by file path. |
 | `policies.txt` | Source document for `test_agent_synthesized.py`. |
 | `evals/common.py` | Shared eval helpers: `get_judge()`, `ASYNC_CONFIG`, `traced()`, and the chatbot conversation driver `run_conversation()`. |
 | `evals/test_*.py` | The eval scripts listed under Running. |
@@ -78,7 +80,7 @@ Switch vendor per run without editing `.env`: `LLM_PROVIDER=openai python -m age
 - `build_model(llm=None)` in `chatbot.py` (binds the shop tools)
 - `get_judge(provider=JUDGE_PROVIDER)` in `evals/common.py` (`AnthropicModel` or `OpenAIModel`)
 
-Each module keeps a default instance so the entry points (`support_agent`, `rag_support_agent`, `chat`) keep a simple signature. Anything that calls out is built on first use, not at import: `agent_instrumented.default_agent()` (which starts the MCP server via `load_mcp_tools()`, in a worker thread so it never touches DeepEval's event loop) and `rag_agent.get_vector_store()` (which embeds the documents). Both are `functools.cache`d. Replies are read with `message.text`, not `.content`, because Claude can return a list of content blocks.
+Each module keeps a default instance so the entry points (`support_agent`, `rag_support_agent`, `chat`) keep a simple signature. Anything that calls out is built on first use, not at import: `agent_instrumented.default_agent()` (which starts the MCP server via `load_mcp_tools()`, in a worker thread so it never touches DeepEval's event loop) and `policy_search.get_vector_store()` (which embeds the documents). Both are `functools.cache`d. Replies are read with `message.text`, not `.content`, because Claude can return a list of content blocks.
 
 **Agent instrumentation pattern** (`agent_instrumented.py` and `rag_agent.py`):
 1. `CallbackHandler()` — captures every LangChain LLM/tool span automatically
@@ -126,7 +128,7 @@ The eval side adds the rest with `traced()` from `evals/common.py`: `@observe(na
 
 - **`test_agent_untraced.py` scores low on purpose**: it passes a plain `LLMTestCase` with no trace, so the judge cannot see the tool call and assumes the answer is made up. `test_agent_tracing.py` runs the same check on a trace and passes. Kept as a baseline that shows why trace-level evals matter.
 - **Synthesizer needs OpenAI**: DeepEval has no Anthropic or Voyage embedder, so `test_agent_synthesized.py` embeds `policies.txt` with OpenAI even when the judge is Claude.
-- **Voyage free tier is 3 requests/minute**: `rag_agent.py` embeds its 9 documents on the first search (one request) and each search embeds its query, so repeated RAG runs within a minute hit `RateLimitError` until a payment method is added.
+- **Voyage free tier is 3 requests/minute**: `agents/tools/policy_search.py` embeds its 9 documents on the first search (one request) and each search embeds its query, so repeated RAG runs within a minute hit `RateLimitError` until a payment method is added.
 - **Windows console encoding**: when stdout is piped, Python on Windows encodes with cp1252 and crashes on emoji in model replies. Set `PYTHONIOENCODING=utf-8`.
 - **`create_react_agent` deprecation**: migrated to `from langchain.agents import create_agent` with `system_prompt=` replacing `prompt=`. Requires the `langchain` base package.
 - **Old `_make_hashable` patch**: DeepEval 4.0.4 crashed `ToolCorrectnessMetric` on unhashable `ToolMessage` objects and was patched by hand in the venv. DeepEval 4.3.1 runs `test_agent_tracing.py` without the patch.
