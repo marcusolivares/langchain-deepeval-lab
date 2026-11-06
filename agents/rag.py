@@ -1,16 +1,16 @@
 """
-rag_agent.py
-============
+rag.py
+======
 A customer-support agent that answers questions by retrieving from a small
 in-memory policy knowledge base instead of calling fixed lookup functions.
 
 Architecture:
   - Retriever: search_policies (tools/policy_search.py), semantic search over
     9 policy documents embedded with Voyage AI, returns the top-3 chunks
-  - LLM: from config.py, Claude by default (same as agent_plain.py, just with retrieval instead of hard-coded data)
+  - LLM: from config.py, Claude by default (same as plain.py, just with retrieval instead of hard-coded data)
   - Instrumentation: DeepEval CallbackHandler + @observe, same 4-line pattern
 
-What's new vs agent_instrumented.py:
+What's new vs instrumented.py:
   - search_policies tool replaces get_order_status / get_refund_policy
   - The tool returns the retrieved chunks as a ToolMessage artifact; the entry
     point collects them from the run and puts them on the DeepEval trace as

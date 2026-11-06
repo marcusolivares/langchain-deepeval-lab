@@ -1,7 +1,7 @@
 """
 mcp_server.py
 =============
-MCP server exposing one tool used by agents/agent_instrumented.py.
+MCP server exposing one tool used by agents/instrumented.py.
 
 Run standalone to verify:
     python -m agents.tools.mcp_server

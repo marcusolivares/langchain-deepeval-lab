@@ -20,7 +20,7 @@ But AI systems are different. There is no single "AI application" shape. In this
 
 An AI Agent is an LLM that can **take actions** — it decides which tools to call, in what order, with what arguments, and then interprets the results to form a final answer.
 
-**Example from our codebase:** `agent_plain.py` is a customer-support agent with two tools — `get_order_status()` and `get_refund_policy()`. When a user asks "Where is my order ORD-1042?", the agent must:
+**Example from our codebase:** `agents/plain.py` is a customer-support agent with two tools — `get_order_status()` and `get_refund_policy()`. When a user asks "Where is my order ORD-1042?", the agent must:
 1. **Decide** that this is an order status question (not a refund question).
 2. **Choose** the `get_order_status` tool.
 3. **Extract** the order ID "ORD-1042" from the user's message and pass it as the argument.
@@ -39,7 +39,7 @@ Every one of these failure modes needs a different evaluation strategy. That's w
 
 MCP is a protocol that lets AI agents connect to **external tool servers**. Instead of defining tools directly in code, the agent discovers tools dynamically from an MCP server at runtime.
 
-**Example from our codebase:** `mcp_server.py` exposes a `get_shipping_options` tool via MCP. The instrumented agent in `agent_instrumented.py` connects to this MCP server at startup and adds the shipping tool to its toolkit alongside the regular Python tools.
+**Example from our codebase:** `agents/tools/mcp_server.py` exposes a `get_shipping_options` tool via MCP. The instrumented agent in `agents/instrumented.py` connects to this MCP server at startup and adds the shipping tool to its toolkit alongside the regular Python tools.
 
 **What's different about testing MCP:**
 - The agent doesn't just call a local function — it calls a tool discovered at runtime from an external server.
@@ -52,7 +52,7 @@ In `test_agent.py`, the fourth golden tests exactly this — it asks "What shipp
 
 A Chatbot maintains conversation history across multiple user messages. Unlike a single-turn agent that processes one question in isolation, a chatbot must remember what was said earlier and stay in character throughout.
 
-**Example from our codebase:** `chatbot.py` is a multi-turn support bot. A user might say:
+**Example from our codebase:** `agents/chatbot.py` is a multi-turn support bot. A user might say:
 - Turn 1: "My order ID is ORD-1042."
 - Turn 2: "Is it going to arrive on time?"
 - Turn 3: "What was the ETA you just mentioned?"
@@ -71,7 +71,7 @@ These failures require **conversational metrics**: KnowledgeRetention, RoleAdher
 
 A RAG Agent doesn't rely on the LLM's training data to answer questions. Instead, it first **retrieves** relevant documents from a knowledge base, then uses those documents as context to generate an answer.
 
-**Example from our codebase:** `rag_agent.py` has a vector store loaded with 9 policy documents (shipping, returns, cancellation, etc.). When a user asks "What is the return policy for electronics?", the agent:
+**Example from our codebase:** `agents/rag.py` searches a vector store loaded with 9 policy documents (shipping, returns, cancellation, etc.). When a user asks "What is the return policy for electronics?", the agent:
 1. **Retrieves** the top 3 most relevant policy documents from the vector store.
 2. **Reads** those documents.
 3. **Generates** an answer based on the retrieved content.

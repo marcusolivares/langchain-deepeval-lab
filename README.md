@@ -34,7 +34,7 @@ a different vendor grade the evals so that no model judges its own answers.
 - **Synthetic goldens.** DeepEval's Synthesizer generates test inputs from
   `policies.txt`, and the agent's answers are checked for bias, toxicity and
   PII leakage.
-- **MCP.** `agent_instrumented.py` starts `mcp_server.py` over stdio and
+- **MCP.** `agents/instrumented.py` starts `agents/tools/mcp_server.py` over stdio and
   merges its tool with the local ones.
 
 ---
@@ -73,7 +73,7 @@ for golden in dataset.evals_iterator(metrics=[task_completion, tool_correctness]
     support_agent(golden.input)
 ```
 
-`agent_plain.py` is the same agent without any DeepEval code, so you can
+`agents/plain.py` is the same agent without any DeepEval code, so you can
 diff the two files.
 
 ---
@@ -143,9 +143,9 @@ What the failures show:
 
 ```bash
 pip install -r requirements.txt
-cp .env.example .env          # then fill in your keys
+cp .env.example .env                  # then fill in your keys
 
-python -m agents.agent_instrumented   # run a bot on its own
+python -m agents.instrumented         # run a bot on its own
 python -m agents.chatbot              # interactive; type 'quit' to exit
 
 python -m evals.test_agent_tracing    # run an eval suite
@@ -157,8 +157,8 @@ Run the bots and the eval scripts from the project root as modules
 To switch vendor for a single run:
 
 ```bash
-LLM_PROVIDER=openai python -m agents.agent_instrumented            # bash
-$env:LLM_PROVIDER="openai"; python -m agents.agent_instrumented    # PowerShell
+LLM_PROVIDER=openai python -m agents.instrumented          # bash
+$env:LLM_PROVIDER="openai"; python -m agents.instrumented  # PowerShell
 ```
 
 To view traces and scores in a dashboard, run `deepeval login` or set
@@ -185,9 +185,9 @@ Model IDs live in `MODELS` in `config.py`.
 
 ```
 config.py                      vendor and model selection (shared by agents and evals)
-agents/agent_plain.py          tool-calling agent, no eval code
-agents/agent_instrumented.py   the same agent with DeepEval tracing and an MCP tool
-agents/rag_agent.py            RAG agent: retrieves policies before answering
+agents/plain.py                tool-calling agent, no eval code
+agents/instrumented.py         the same agent with DeepEval tracing and an MCP tool
+agents/rag.py                  RAG agent: retrieves policies before answering
 agents/chatbot.py              multi-turn chatbot with a manual tool-call loop
 agents/tools/shop.py           demo order/refund data and the two shared @tool functions
 agents/tools/policy_search.py  RAG retriever: in-memory vector store + Voyage AI embeddings

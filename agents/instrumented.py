@@ -1,9 +1,9 @@
 """
-agent_instrumented.py
-=====================
-SAME agent as agent_plain.py, with DeepEval observability added.
+instrumented.py
+===============
+SAME agent as plain.py, with DeepEval observability added.
 
-What changed vs agent_plain.py? Only 4 things — all marked with "NEW":
+What changed vs plain.py? Only 4 things — all marked with "NEW":
 
   (1) Import CallbackHandler from deepeval.integrations.langchain
   (2) Build the callback handler once (no metrics baked in — metrics are
@@ -35,7 +35,7 @@ from deepeval.tracing.context import update_current_trace
 
 
 # ---------------------------------------------------------------------------
-# Same agent as agent_plain.py.
+# Same agent as plain.py.
 # ---------------------------------------------------------------------------
 @cache
 def load_mcp_tools() -> list:

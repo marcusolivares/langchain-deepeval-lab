@@ -3,5 +3,5 @@ the multi-turn chatbot. The tools they call live in agents.tools.
 
 Run a bot on its own from the project root as a module:
 
-    python -m agents.agent_instrumented
+    python -m agents.instrumented
 """

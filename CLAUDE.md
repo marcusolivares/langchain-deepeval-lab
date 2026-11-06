@@ -27,13 +27,13 @@ CONFIDENT_API_KEY=confident_us_...  # optional: stream traces to Confident AI da
 
 ## Running
 
-Run everything from the project root, as modules (`python -m agents.<name>`, `python -m evals.<name>`), so the root-level `config` and the `agents` and `evals` packages can be imported. Running a file by path (`python agents/agent_plain.py`) fails with `ModuleNotFoundError`.
+Run everything from the project root, as modules (`python -m agents.<name>`, `python -m evals.<name>`), so the root-level `config` and the `agents` and `evals` packages can be imported. Running a file by path (`python agents/plain.py`) fails with `ModuleNotFoundError`.
 
 ```bash
 # Sanity-check the bots on their own
-python -m agents.agent_plain
-python -m agents.agent_instrumented
-python -m agents.rag_agent
+python -m agents.plain
+python -m agents.instrumented
+python -m agents.rag
 python -m agents.chatbot                        # interactive, type 'quit' to exit
 
 # Phase 1 — tool-calling support agent
@@ -53,7 +53,7 @@ python -m evals.test_chatbot_geval              # ConversationalGEval with custo
 python -m evals.test_agent_synthesized          # Synthesizer + Bias + Toxicity + PIILeakage
 ```
 
-Switch vendor per run without editing `.env`: `LLM_PROVIDER=openai python -m agents.agent_plain` (bash) or `$env:LLM_PROVIDER="openai"; python -m agents.agent_plain` (PowerShell).
+Switch vendor per run without editing `.env`: `LLM_PROVIDER=openai python -m agents.plain` (bash) or `$env:LLM_PROVIDER="openai"; python -m agents.plain` (PowerShell).
 
 ## Project structure
 
@@ -61,14 +61,14 @@ Switch vendor per run without editing `.env`: `LLM_PROVIDER=openai python -m age
 |---|---|
 | `config.py` | The one place the LLM vendor is chosen. Reads `LLM_PROVIDER` / `JUDGE_PROVIDER`, holds the model IDs in `MODELS`, and builds chat models with `get_chat_model()` (`init_chat_model` under the hood). Stays at the root because both `agents/` and `evals/` import it. |
 | `agents/` | The bots under evaluation. The evals import them as `agents.<module>`. |
-| `agents/agent_plain.py` | Baseline LangChain agent with the two shop tools. No eval code; kept as a baseline to diff against `agent_instrumented.py`. |
-| `agents/agent_instrumented.py` | The same agent plus DeepEval instrumentation and one extra tool loaded from `tools/mcp_server.py`. The agent evals import `support_agent` from here. |
-| `agents/rag_agent.py` | Agent with one tool, `search_policies`. Retrieved chunks are forwarded to the trace as `retrieval_context`. |
+| `agents/plain.py` | Baseline LangChain agent with the two shop tools. No eval code; kept as a baseline to diff against `agents/instrumented.py`. |
+| `agents/instrumented.py` | The same agent plus DeepEval instrumentation and one extra tool loaded from `tools/mcp_server.py`. The agent evals import `support_agent` from here. |
+| `agents/rag.py` | Agent with one tool, `search_policies`. Retrieved chunks are forwarded to the trace as `retrieval_context`. |
 | `agents/chatbot.py` | Multi-turn chatbot that runs its own tool-call loop over a model with `bind_tools()`, returning `(reply, history, tools_called)` per turn. |
 | `agents/tools/` | Every tool the bots call. New tools go here, not in the agent modules. |
 | `agents/tools/shop.py` | The ShopEasy demo data (`ORDERS`, `REFUND_POLICIES`) and the two `@tool` functions `get_order_status` and `get_refund_policy`, shared by the agents and the chatbot. |
 | `agents/tools/policy_search.py` | The RAG retriever: 9 policy documents in an `InMemoryVectorStore` with Voyage AI embeddings, the `search_policies` tool, and `retrieved_chunks()`, which pulls the chunks out of a run's `ToolMessage` artifacts. |
-| `agents/tools/mcp_server.py` | MCP server exposing `get_shipping_options`, started over stdio by `agent_instrumented.py` by file path. |
+| `agents/tools/mcp_server.py` | MCP server exposing `get_shipping_options`, started over stdio by `agents/instrumented.py` by file path. |
 | `policies.txt` | Source document for `test_agent_synthesized.py`. |
 | `evals/common.py` | Shared eval helpers: `get_judge()`, `ASYNC_CONFIG`, `traced()`, and the chatbot conversation driver `run_conversation()`. |
 | `evals/test_*.py` | The eval scripts listed under Running. |
@@ -76,13 +76,13 @@ Switch vendor per run without editing `.env`: `LLM_PROVIDER=openai python -m age
 ## Architecture
 
 **Dependency injection**: nothing outside `config.py` names a vendor or model. Each bot exposes a factory that takes the model as an optional argument and falls back to the default from `config.py`:
-- `build_agent(llm=None)` in `agent_plain.py`, `agent_instrumented.py`, `rag_agent.py`
+- `build_agent(llm=None)` in `agents/plain.py`, `agents/instrumented.py`, `agents/rag.py`
 - `build_model(llm=None)` in `chatbot.py` (binds the shop tools)
 - `get_judge(provider=JUDGE_PROVIDER)` in `evals/common.py` (`AnthropicModel` or `OpenAIModel`)
 
-Each module keeps a default instance so the entry points (`support_agent`, `rag_support_agent`, `chat`) keep a simple signature. Anything that calls out is built on first use, not at import: `agent_instrumented.default_agent()` (which starts the MCP server via `load_mcp_tools()`, in a worker thread so it never touches DeepEval's event loop) and `policy_search.get_vector_store()` (which embeds the documents). Both are `functools.cache`d. Replies are read with `message.text`, not `.content`, because Claude can return a list of content blocks.
+Each module keeps a default instance so the entry points (`support_agent`, `rag_support_agent`, `chat`) keep a simple signature. Anything that calls out is built on first use, not at import: `instrumented.default_agent()` (which starts the MCP server via `load_mcp_tools()`, in a worker thread so it never touches DeepEval's event loop) and `policy_search.get_vector_store()` (which embeds the documents). Both are `functools.cache`d. Replies are read with `message.text`, not `.content`, because Claude can return a list of content blocks.
 
-**Agent instrumentation pattern** (`agent_instrumented.py` and `rag_agent.py`):
+**Agent instrumentation pattern** (`agents/instrumented.py` and `agents/rag.py`):
 1. `CallbackHandler()` — captures every LangChain LLM/tool span automatically
 2. `config={"callbacks": [deepeval_callback]}` on `.invoke()` — wires it in
 3. `update_current_trace(output=reply)` (plus `retrieval_context` in the RAG agent) — sets the clean reply on the trace

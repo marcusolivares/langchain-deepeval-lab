@@ -1,6 +1,6 @@
 """
-agent_plain.py
-==============
+plain.py
+========
 A simple customer-support agent built with LangChain.
 No evaluation code anywhere. This is what a developer would write
 if they'd never heard of DeepEval.

@@ -11,7 +11,7 @@ Tools available (shared with the agents via tools/shop.py):
   - get_order_status(order_id)   → real-time shipping status from in-memory DB
   - get_refund_policy(category)  → refund rules per product category
 
-Unlike agent_plain.py (which delegates the tool-call loop to LangGraph),
+Unlike plain.py (which delegates the tool-call loop to LangGraph),
 this chatbot manages the loop manually so the full message history — including
 tool calls and tool results — is preserved across turns. This is what makes
 multi-turn evaluation possible with DeepEval.
