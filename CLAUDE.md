@@ -57,6 +57,15 @@ python -m evals.test_chatbot_geval              # ConversationalGEval with custo
 python -m evals.test_agent_synthesized          # Synthesizer + Bias + Toxicity + PIILeakage
 ```
 
+Run every suite except `test_agent_untraced` (fails by design) and `test_agent_synthesized` (needs `OPENAI_API_KEY`) in PowerShell:
+
+```powershell
+$env:PYTHONIOENCODING="utf-8"; $env:DEEPEVAL_NO_INSPECT_PROMPT="1"
+foreach ($s in "agent_geval","agent_quality","agent_tracing","chatbot","chatbot_geval","rag_agent") { python -m "evals.test_$s" }
+```
+
+`DEEPEVAL_NO_INSPECT_PROMPT=1` skips DeepEval's "Open run in deepeval inspect TUI?" prompt after each suite. Every suite passes `identifier="<suite>"` and `display_config=REPORT_CONFIG`, so DeepEval also writes its full report to `reports/<suite>_<timestamp>.md` (gitignored). The README's Results table is copied from these reports by hand.
+
 Switch vendor per run without editing `.env`: `LLM_PROVIDER=openai python -m agents.plain` (bash) or `$env:LLM_PROVIDER="openai"; python -m agents.plain` (PowerShell).
 
 ## Project structure
@@ -74,7 +83,7 @@ Switch vendor per run without editing `.env`: `LLM_PROVIDER=openai python -m age
 | `agents/tools/policy_search.py` | The RAG retriever: 9 policy documents in an `InMemoryVectorStore` with Voyage AI embeddings, the `search_policies` tool, and `retrieved_chunks()`, which pulls the chunks out of a run's `ToolMessage` artifacts. |
 | `agents/tools/mcp_server.py` | MCP server exposing `get_shipping_options`, started over stdio by `agents/instrumented.py` by file path. |
 | `policies.txt` | Source document for `test_agent_synthesized.py`. |
-| `evals/common.py` | Shared eval helpers: `get_judge()`, `ASYNC_CONFIG`, `traced()`, and the chatbot conversation driver `run_conversation()`. |
+| `evals/common.py` | Shared eval helpers: `get_judge()`, `ASYNC_CONFIG`, `REPORT_CONFIG` (Markdown reports in `reports/`), `traced()`, and the chatbot conversation driver `run_conversation()`. |
 | `evals/test_*.py` | The eval scripts listed under Running. |
 
 ## Architecture

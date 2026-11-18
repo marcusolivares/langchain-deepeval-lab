@@ -158,6 +158,23 @@ python -m evals.test_agent_tracing    # run an eval suite
 Run the bots and the eval scripts from the project root as modules
 (`python -m agents.<name>`, `python -m evals.<name>`).
 
+To run every suite in a row, skipping `test_agent_untraced` (fails by design)
+and `test_agent_synthesized` (needs an OpenAI key):
+
+```powershell
+$env:PYTHONIOENCODING="utf-8"; $env:DEEPEVAL_NO_INSPECT_PROMPT="1"
+foreach ($s in "agent_geval","agent_quality","agent_tracing","chatbot","chatbot_geval","rag_agent") { python -m "evals.test_$s" }
+```
+
+```bash
+export DEEPEVAL_NO_INSPECT_PROMPT=1
+for s in agent_geval agent_quality agent_tracing chatbot chatbot_geval rag_agent; do python -m "evals.test_$s"; done
+```
+
+`DEEPEVAL_NO_INSPECT_PROMPT` stops DeepEval from asking to open its inspector
+after each suite. Each suite also saves its full report, including the
+aggregate metrics table, to `reports/<suite>_<timestamp>.md` (gitignored).
+
 To switch vendor for a single run:
 
 ```bash
@@ -197,7 +214,7 @@ agents/tools/shop.py           demo order/refund data and the two shared @tool f
 agents/tools/policy_search.py  RAG retriever: in-memory vector store + Voyage AI embeddings
 agents/tools/mcp_server.py     MCP server exposing get_shipping_options
 policies.txt                   source document for synthetic goldens
-evals/common.py                judge factory, async config, tracing wrapper
+evals/common.py                judge factory, async and report config, tracing wrapper
 evals/test_*.py                the eval suites above
 ```
 

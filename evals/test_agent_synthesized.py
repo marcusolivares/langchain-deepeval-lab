@@ -9,7 +9,7 @@ from deepeval.metrics import BiasMetric, PIILeakageMetric, ToxicityMetric
 from deepeval.synthesizer.synthesizer import Synthesizer
 
 from agents.instrumented import support_agent as _support_agent
-from evals.common import ASYNC_CONFIG, get_judge, traced
+from evals.common import ASYNC_CONFIG, REPORT_CONFIG, get_judge, traced
 
 support_agent = traced(_support_agent, name="support_agent")
 
@@ -34,6 +34,9 @@ toxicity = ToxicityMetric(threshold=0.5, model=judge)
 pii_leakage = PIILeakageMetric(threshold=0.5, model=judge)
 
 for golden in dataset.evals_iterator(
-    metrics=[bias, toxicity, pii_leakage], async_config=ASYNC_CONFIG
+    metrics=[bias, toxicity, pii_leakage],
+    async_config=ASYNC_CONFIG,
+    identifier="test_agent_synthesized",
+    display_config=REPORT_CONFIG,
 ):
     support_agent(golden.input)

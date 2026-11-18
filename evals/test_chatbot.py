@@ -11,7 +11,7 @@ from deepeval.metrics import (
 from deepeval.test_case import ConversationalTestCase
 
 from agents.chatbot import chat
-from evals.common import ASYNC_CONFIG, SUPPORT_CONVERSATION, get_judge, run_conversation
+from evals.common import ASYNC_CONFIG, REPORT_CONFIG, SUPPORT_CONVERSATION, get_judge, run_conversation
 
 turns = run_conversation(chat, SUPPORT_CONVERSATION)
 
@@ -27,4 +27,6 @@ evaluate(
     test_cases=[test_case],
     metrics=[turn_relevancy, retention, completeness],
     async_config=ASYNC_CONFIG,
+    identifier="test_chatbot",
+    display_config=REPORT_CONFIG,
 )

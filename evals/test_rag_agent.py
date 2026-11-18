@@ -10,7 +10,7 @@ from deepeval.metrics import (
     FaithfulnessMetric,
 )
 
-from evals.common import ASYNC_CONFIG, get_judge, traced
+from evals.common import ASYNC_CONFIG, REPORT_CONFIG, get_judge, traced
 from agents.rag import rag_support_agent as _rag_support_agent
 
 rag_support_agent = traced(_rag_support_agent, name="rag_support_agent")
@@ -45,5 +45,7 @@ faithfulness = FaithfulnessMetric(threshold=0.7, model=judge)
 for golden in dataset.evals_iterator(
     metrics=[precision, recall, relevancy, faithfulness],
     async_config=ASYNC_CONFIG,
+    identifier="test_rag_agent",
+    display_config=REPORT_CONFIG,
 ):
     rag_support_agent(golden.input)

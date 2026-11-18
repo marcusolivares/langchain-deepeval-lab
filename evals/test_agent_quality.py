@@ -8,7 +8,7 @@ from deepeval.metrics import (
 )
 
 from agents.instrumented import support_agent as _support_agent
-from evals.common import ASYNC_CONFIG, get_judge, traced
+from evals.common import ASYNC_CONFIG, REPORT_CONFIG, get_judge, traced
 
 support_agent = traced(_support_agent, name="support_agent")
 
@@ -37,5 +37,7 @@ dataset = EvaluationDataset(
 for golden in dataset.evals_iterator(
     metrics=[prompt_alignment, step_efficiency, answer_relevancy],
     async_config=ASYNC_CONFIG,
+    identifier="test_agent_quality",
+    display_config=REPORT_CONFIG,
 ):
     support_agent(golden.input)

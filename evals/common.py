@@ -9,7 +9,7 @@ the agents can be imported:
 """
 
 from deepeval.contextvars import get_current_golden
-from deepeval.evaluate import AsyncConfig
+from deepeval.evaluate import AsyncConfig, DisplayConfig
 from deepeval.models import AnthropicModel, OpenAIModel
 from deepeval.test_case import ToolCall, Turn
 from deepeval.tracing import observe, update_current_trace
@@ -30,6 +30,10 @@ def get_judge(provider: str = JUDGE_PROVIDER):
 # The Claude-judged evals ran with run_async=False; the GPT-4o-judged ones
 # ran concurrently (DeepEval's default). Keep both behaviours.
 ASYNC_CONFIG = AsyncConfig(run_async=JUDGE_PROVIDER != "anthropic")
+
+# Besides the terminal report, save DeepEval's full report as Markdown in
+# reports/<identifier>_<timestamp>.md. Each suite passes its name as identifier.
+REPORT_CONFIG = DisplayConfig(file_type="md", file_output_dir="reports")
 
 
 def traced(agent_fn, name: str):

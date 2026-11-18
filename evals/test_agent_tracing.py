@@ -5,7 +5,7 @@ from deepeval.metrics import TaskCompletionMetric, ToolCorrectnessMetric
 from deepeval.test_case import ToolCall
 
 from agents.instrumented import support_agent as _support_agent
-from evals.common import ASYNC_CONFIG, get_judge, traced
+from evals.common import ASYNC_CONFIG, REPORT_CONFIG, get_judge, traced
 
 support_agent = traced(_support_agent, name="support_agent")
 
@@ -28,6 +28,9 @@ dataset = EvaluationDataset(
 )
 
 for golden in dataset.evals_iterator(
-    metrics=[task_completion, tool_correctness], async_config=ASYNC_CONFIG
+    metrics=[task_completion, tool_correctness],
+    async_config=ASYNC_CONFIG,
+    identifier="test_agent_tracing",
+    display_config=REPORT_CONFIG,
 ):
     support_agent(golden.input)

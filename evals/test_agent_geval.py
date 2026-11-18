@@ -5,7 +5,7 @@ from deepeval.metrics import GEval
 from deepeval.test_case import SingleTurnParams
 
 from agents.instrumented import support_agent as _support_agent
-from evals.common import ASYNC_CONFIG, get_judge, traced
+from evals.common import ASYNC_CONFIG, REPORT_CONFIG, get_judge, traced
 
 support_agent = traced(_support_agent, name="support_agent")
 
@@ -36,5 +36,10 @@ dataset = EvaluationDataset(
     ]
 )
 
-for golden in dataset.evals_iterator(metrics=[correctness], async_config=ASYNC_CONFIG):
+for golden in dataset.evals_iterator(
+    metrics=[correctness],
+    async_config=ASYNC_CONFIG,
+    identifier="test_agent_geval",
+    display_config=REPORT_CONFIG,
+):
     support_agent(golden.input)
