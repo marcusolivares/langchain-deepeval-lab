@@ -98,44 +98,52 @@ never falls back to DeepEval's default OpenAI judge.
 
 ## Results
 
-One run on 2026-11-05, with Claude Sonnet 4.6 as both bot and judge. Judge
-cost was about $0.35 in total. Each suite has only 1–3 test cases, so treat
-these scores as a snapshot, not a benchmark.
+One run on 2026-11-18 with DeepEval 4.3.3, with Claude Sonnet 5.5 (effort
+`low`) as both bot and judge. The six suites took about 3 minutes and about
+$0.32 in judge tokens. Each suite has only 1–3 test cases, so treat these
+scores as a snapshot, not a benchmark.
+
+DeepEval prints a report like this at the end of each suite. This one is
+`test_rag_agent`, which scores the RAG agent's retrieval and its answers
+separately:
+
+![DeepEval's terminal report for test_rag_agent: both test cases passed all 4 metrics. Contextual Precision 1.00, Contextual Recall 1.00, Answer Relevancy 0.92 and Faithfulness 1.00, each with a 100% pass rate over 2 test cases.](docs/images/test_rag_agent_output.png)
+
+The aggregate metrics of all six suites:
 
 | Suite | Metric | Score | Passed |
 |---|---|---|---|
-| `test_agent_tracing` | Task Completion | 0.95 | 2/2 |
+| `test_agent_tracing` | Task Completion | 0.97 | 2/2 |
 | | Tool Correctness | 1.00 | 2/2 |
-| `test_agent_quality` | Answer Relevancy | 0.96 | 3/3 |
+| `test_agent_quality` | Answer Relevancy | 0.85 | 3/3 |
 | | Prompt Alignment | 0.67 | 2/3 |
-| | Step Efficiency | 0.53 | 2/3 |
+| | Step Efficiency | 0.82 | 3/3 |
 | `test_agent_geval` | Correctness (GEval) | 0.90 | 1/1 |
-| `test_agent_untraced` | Task Completion | 0.30 | 0/1 |
 | `test_rag_agent` | Contextual Precision | 1.00 | 2/2 |
 | | Contextual Recall | 1.00 | 2/2 |
-| | Answer Relevancy | 1.00 | 2/2 |
+| | Answer Relevancy | 0.92 | 2/2 |
 | | Faithfulness | 1.00 | 2/2 |
 | `test_chatbot` | Turn Relevancy | 1.00 | 1/1 |
 | | Knowledge Retention | 1.00 | 1/1 |
 | | Conversation Completeness | 0.75 | 1/1 |
-| `test_chatbot_geval` | Correctness (ConversationalGEval) | 0.60 | 0/1 |
+| `test_chatbot_geval` | Correctness (ConversationalGEval) | 0.80 | 1/1 |
 
-Scores are means across a suite's test cases. `test_agent_synthesized` is not
-included because it needs an OpenAI key.
+Scores are means across a suite's test cases. Two suites were skipped:
+`test_agent_untraced`, which fails by design (see [Eval suite](#eval-suite)),
+and `test_agent_synthesized`, which needs an OpenAI key.
 
-What the failures show:
+What the results show:
 
-- **Trace vs no trace.** The same Task Completion check scores 0.95 on the
-  trace and 0.30 on the bare reply. Without the trace, the judge cannot see
-  the `get_order_status` call and assumes the answer was made up.
 - **A real agent bug.** For *"I want to return order ORD-2099, what should I
-  do?"* the agent called no tools and asked for the product category several
-  times in one reply. Prompt Alignment scored 0.0 and Step Efficiency 0.1.
-  The cause is a gap in the tools: `ORDERS` stores each order's category,
-  but `get_order_status` does not return it.
-- **A chatbot inconsistency.** The judge saw the `get_order_status` call
-  in the transcript. It also caught that in turn 2 the bot said it had no
-  ETA right after stating one.
+  do?"* the agent looked up the order, then asked for the product type
+  instead of giving return steps. Prompt Alignment scored 0.00. The cause is
+  a gap in the tools: `ORDERS` stores each order's category, but
+  `get_order_status` does not return it, so the agent cannot pick the right
+  refund policy.
+- **Changes since the Sonnet 4.6 run (2026-11-05).** Step Efficiency rose
+  from 0.53 to 0.82, since the agent now calls `get_order_status` before
+  asking. `test_chatbot_geval` now passes (0.60 → 0.80). With this few test
+  cases, part of any change can be run-to-run noise.
 
 ---
 
