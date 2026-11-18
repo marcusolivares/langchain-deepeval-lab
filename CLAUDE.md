@@ -4,7 +4,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Setup
 
+Use Python 3.13. Python 3.15 does not work: `langchain-voyageai==0.4.1` requires Python <3.15, so pip reports no matching version.
+
 ```bash
+py -3.13 -m venv .venv                # Windows; elsewhere: python3.13 -m venv .venv
+.venv\Scripts\Activate.ps1            # PowerShell; bash: source .venv/bin/activate (Windows: .venv/Scripts/activate)
 pip install -r requirements.txt
 git config core.hooksPath .githooks   # once per clone: enables the commit-msg hook
 ```

@@ -141,7 +141,11 @@ What the failures show:
 
 ## Quick start
 
+Requires Python 3.13. Python 3.15 fails to install `langchain-voyageai==0.4.1`.
+
 ```bash
+python3.13 -m venv .venv              # Windows: py -3.13 -m venv .venv
+source .venv/bin/activate             # PowerShell: .venv\Scripts\Activate.ps1
 pip install -r requirements.txt
 cp .env.example .env                  # then fill in your keys
 
