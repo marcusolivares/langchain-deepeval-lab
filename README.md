@@ -59,18 +59,21 @@ def support_agent(user_input: str) -> str:
     return reply
 ```
 
-The eval opens the trace and attaches the expected values from each golden:
+Each eval is a pytest test. It runs the agent inside a trace, attaches the
+expected values from the golden, and asserts on the scores:
 
 ```python
-support_agent = traced(_support_agent, name="support_agent")  # evals/common.py
+run_support_agent = traced(support_agent, name="support_agent")  # evals/common.py
 
-dataset = EvaluationDataset(goldens=[
+GOLDENS = [
     Golden(input="Where is my order ORD-1042?",
            expected_tools=[ToolCall(name="get_order_status")]),
-])
+]
 
-for golden in dataset.evals_iterator(metrics=[task_completion, tool_correctness]):
-    support_agent(golden.input)
+@pytest.mark.parametrize("golden", GOLDENS)
+def test_task_completion_and_tool_use(golden):
+    run_support_agent(golden)
+    assert_test(golden=golden, metrics=[task_completion, tool_correctness])
 ```
 
 `agents/plain.py` is the same agent without any DeepEval code, so you can
@@ -80,16 +83,16 @@ diff the two files.
 
 ## Eval suite
 
-| Script | Bot | Metrics | What it covers |
+| Test file | Bot | Metrics | What it covers |
 |---|---|---|---|
 | `test_agent_tracing` | Agent | TaskCompletion, ToolCorrectness | Did the agent finish the task and pick the right tool? |
 | `test_agent_quality` | Agent | AnswerRelevancy, PromptAlignment, StepEfficiency | Reply quality, system-prompt adherence, wasted steps |
 | `test_agent_geval` | Agent | GEval | Custom correctness criteria against an expected answer |
-| `test_agent_untraced` | Agent | TaskCompletion | The same check on the bare reply with no trace. It fails because the judge cannot see the tool call, which shows why trace-level evals matter |
+| `test_agent_untraced` | Agent | TaskCompletion | The same check on the bare reply with no trace. It fails because the judge cannot see the tool call, which shows why trace-level evals matter. Marked as an expected failure |
 | `test_rag_agent` | RAG agent | ContextualPrecision, ContextualRecall, AnswerRelevancy, Faithfulness | Retrieval and generation scored separately |
 | `test_chatbot` | Chatbot | TurnRelevancy, KnowledgeRetention, ConversationCompleteness | A four-turn conversation that tests memory |
 | `test_chatbot_geval` | Chatbot | ConversationalGEval | Custom criteria over the whole conversation, including the tools called on each turn |
-| `test_agent_synthesized` | Agent | Bias, Toxicity, PIILeakage | Safety checks on Synthesizer-generated goldens |
+| `test_agent_synthesized` | Agent | Bias, Toxicity, PIILeakage | Safety checks on goldens generated from `policies.txt` by DeepEval's Synthesizer and saved to the repo, so every run scores the same inputs |
 
 Every metric receives the judge model explicitly, so a Claude-only setup
 never falls back to DeepEval's default OpenAI judge.
@@ -160,28 +163,15 @@ cp .env.example .env                  # then fill in your keys
 python -m agents.instrumented         # run a bot on its own
 python -m agents.chatbot              # interactive; type 'quit' to exit
 
-python -m evals.test_agent_tracing    # run an eval suite
+deepeval test run evals/              # run every eval (about $0.50)
+deepeval test run evals/ -m smoke     # one suite per bot, about half the cost
 ```
 
-Run the bots and the eval scripts from the project root as modules
-(`python -m agents.<name>`, `python -m evals.<name>`).
-
-To run every suite in a row, skipping `test_agent_untraced` (fails by design)
-and `test_agent_synthesized` (needs an OpenAI key):
-
-```powershell
-$env:PYTHONIOENCODING="utf-8"; $env:DEEPEVAL_NO_INSPECT_PROMPT="1"
-foreach ($s in "agent_geval","agent_quality","agent_tracing","chatbot","chatbot_geval","rag_agent") { python -m "evals.test_$s" }
-```
-
-```bash
-export DEEPEVAL_NO_INSPECT_PROMPT=1
-for s in agent_geval agent_quality agent_tracing chatbot chatbot_geval rag_agent; do python -m "evals.test_$s"; done
-```
-
-`DEEPEVAL_NO_INSPECT_PROMPT` stops DeepEval from asking to open its inspector
-after each suite. Each suite also saves its full report, including the
-aggregate metrics table, to `reports/<suite>_<timestamp>.md` (gitignored).
+Run everything from the project root, the bots as modules
+(`python -m agents.<name>`). The evals are pytest tests run with DeepEval's
+runner: a metric below its threshold fails its test, and the run exits
+non-zero, so the same command works as a regression check in CI. Select a
+bot with `-m agent`, `-m rag` or `-m chatbot`, or pass a single test file.
 
 To switch vendor for a single run:
 
@@ -202,7 +192,7 @@ To view traces and scores in a dashboard, run `deepeval login` or set
 | `LLM_PROVIDER` | Vendor that runs the bots: `anthropic` (default) or `openai` |
 | `JUDGE_PROVIDER` | Vendor that judges the evals. Defaults to `LLM_PROVIDER` |
 | `ANTHROPIC_API_KEY` | Needed when either provider is `anthropic` |
-| `OPENAI_API_KEY` | Needed when either provider is `openai`, and always by `test_agent_synthesized` |
+| `OPENAI_API_KEY` | Needed when either provider is `openai`, and always by `evals/synthesize_goldens.py` |
 | `VOYAGE_API_KEY` | Embeddings for the RAG agent |
 | `CONFIDENT_API_KEY` | Optional: streams traces to Confident AI |
 
@@ -222,7 +212,10 @@ agents/tools/shop.py           demo order/refund data and the two shared @tool f
 agents/tools/policy_search.py  RAG retriever: in-memory vector store + Voyage AI embeddings
 agents/tools/mcp_server.py     MCP server exposing get_shipping_options
 policies.txt                   source document for synthetic goldens
-evals/common.py                judge factory, async and report config, tracing wrapper
+pytest.ini                     test paths and the smoke/agent/rag/chatbot markers
+evals/common.py                judge factory, tracing wrapper, conversation driver
+evals/conftest.py              refuses plain pytest; shares one chatbot conversation
+evals/synthesize_goldens.py    generates and saves the synthetic goldens
 evals/test_*.py                the eval suites above
 ```
 
@@ -230,8 +223,13 @@ evals/test_*.py                the eval suites above
 
 ## Known limitations
 
-- **DeepEval's Synthesizer embeds with OpenAI**, so `test_agent_synthesized`
-  needs `OPENAI_API_KEY` even when Claude is the judge.
+- **DeepEval's Synthesizer embeds with OpenAI**, so generating the synthetic
+  goldens (`python -m evals.synthesize_goldens`) needs `OPENAI_API_KEY` even
+  when Claude is the judge. Until they are generated, `test_agent_synthesized`
+  is skipped.
+- **Plain `pytest` is refused.** The traced evals only work under
+  `deepeval test run`, so `evals/conftest.py` stops a plain `pytest` run
+  before it pays for any agent call.
 - **The Voyage AI free tier allows 3 requests per minute.** The RAG agent
   embeds its documents on the first search and each query after that, so
   repeated runs within a minute are rate-limited.

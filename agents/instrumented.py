@@ -43,7 +43,7 @@ def load_mcp_tools() -> list:
 
     Runs on the first build_agent() call, not at import. The async client runs
     in a worker thread so it never touches the caller's event loop (DeepEval's
-    evals_iterator keeps one open).
+    eval runner keeps one open).
     """
     client = MultiServerMCPClient({
         "shopease": {

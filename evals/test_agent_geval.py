@@ -1,14 +1,17 @@
 """Agent: a custom GEval correctness metric that compares the reply to an expected answer."""
 
-from deepeval.dataset import EvaluationDataset, Golden
+import pytest
+from deepeval import assert_test
+from deepeval.dataset import Golden
 from deepeval.metrics import GEval
 from deepeval.test_case import SingleTurnParams
 
-from agents.instrumented import support_agent as _support_agent
-from evals.common import ASYNC_CONFIG, REPORT_CONFIG, get_judge, traced
+from agents.instrumented import support_agent
+from evals.common import get_judge, traced
 
-support_agent = traced(_support_agent, name="support_agent")
+pytestmark = pytest.mark.agent
 
+run_support_agent = traced(support_agent, name="support_agent")
 
 correctness = GEval(
     name="Correctness",
@@ -26,20 +29,15 @@ correctness = GEval(
     ],
 )
 
+GOLDENS = [
+    Golden(
+        input="Where is my order ORD-1042?",
+        expected_output="order ORD-1042 is shipped and will arrive by May 13th",
+    )
+]
 
-dataset = EvaluationDataset(
-    goldens=[
-        Golden(
-            input="Where is my order ORD-1042?",
-            expected_output="order ORD-1042 is shipped and will arrive by May 13th",
-        )
-    ]
-)
 
-for golden in dataset.evals_iterator(
-    metrics=[correctness],
-    async_config=ASYNC_CONFIG,
-    identifier="test_agent_geval",
-    display_config=REPORT_CONFIG,
-):
-    support_agent(golden.input)
+@pytest.mark.parametrize("golden", GOLDENS, ids=lambda g: g.input)
+def test_correctness(golden: Golden):
+    run_support_agent(golden)
+    assert_test(golden=golden, metrics=[correctness])

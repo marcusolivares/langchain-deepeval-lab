@@ -3,14 +3,14 @@ Chatbot: a custom ConversationalGEval correctness metric over a live conversatio
 The judge also sees the tools the chatbot called on each turn.
 """
 
-from deepeval.evaluate import evaluate
+import pytest
+from deepeval import assert_test
 from deepeval.metrics import ConversationalGEval
 from deepeval.test_case import ConversationalTestCase, MultiTurnParams
 
-from agents.chatbot import chat
-from evals.common import ASYNC_CONFIG, REPORT_CONFIG, SUPPORT_CONVERSATION, get_judge, run_conversation
+from evals.common import RUN_ASYNC, get_judge
 
-turns = run_conversation(chat, SUPPORT_CONVERSATION)
+pytestmark = pytest.mark.chatbot
 
 correctness = ConversationalGEval(
     name="Correctness",
@@ -28,12 +28,10 @@ correctness = ConversationalGEval(
 )
 
 
-test_case = ConversationalTestCase(turns=turns)
-
-evaluate(
-    test_cases=[test_case],
-    metrics=[correctness],
-    async_config=ASYNC_CONFIG,
-    identifier="test_chatbot_geval",
-    display_config=REPORT_CONFIG,
-)
+def test_conversation_correctness(support_conversation):
+    # support_conversation (evals/conftest.py) is the live run, shared with test_chatbot.
+    assert_test(
+        ConversationalTestCase(turns=support_conversation),
+        [correctness],
+        run_async=RUN_ASYNC,
+    )

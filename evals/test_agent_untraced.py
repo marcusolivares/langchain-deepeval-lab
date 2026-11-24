@@ -2,23 +2,26 @@
 no trace. The judge cannot see the tool call, so this scores low by design.
 """
 
-from deepeval.evaluate import evaluate
+import pytest
+from deepeval import assert_test
 from deepeval.metrics import TaskCompletionMetric
 from deepeval.test_case import LLMTestCase
 
 from agents.instrumented import support_agent
-from evals.common import ASYNC_CONFIG, REPORT_CONFIG, get_judge
+from evals.common import RUN_ASYNC, get_judge
 
-actual_output = support_agent("Where is my order ORD-1042?")
+pytestmark = pytest.mark.agent
 
-test_case = LLMTestCase(
-    input="Where is my order ORD-1042?", actual_output=actual_output
+
+@pytest.mark.xfail(
+    reason="By design: without the trace the judge cannot see the tool call",
+    strict=False,
 )
-
-evaluate(
-    test_cases=[test_case],
-    metrics=[TaskCompletionMetric(threshold=0.7, model=get_judge())],
-    async_config=ASYNC_CONFIG,
-    identifier="test_agent_untraced",
-    display_config=REPORT_CONFIG,
-)
+def test_task_completion_without_trace():
+    question = "Where is my order ORD-1042?"
+    test_case = LLMTestCase(input=question, actual_output=support_agent(question))
+    assert_test(
+        test_case,
+        [TaskCompletionMetric(threshold=0.7, model=get_judge())],
+        run_async=RUN_ASYNC,
+    )

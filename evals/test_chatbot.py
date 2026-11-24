@@ -2,7 +2,8 @@
 four-turn conversation.
 """
 
-from deepeval.evaluate import evaluate
+import pytest
+from deepeval import assert_test
 from deepeval.metrics import (
     ConversationCompletenessMetric,
     KnowledgeRetentionMetric,
@@ -10,10 +11,9 @@ from deepeval.metrics import (
 )
 from deepeval.test_case import ConversationalTestCase
 
-from agents.chatbot import chat
-from evals.common import ASYNC_CONFIG, REPORT_CONFIG, SUPPORT_CONVERSATION, get_judge, run_conversation
+from evals.common import RUN_ASYNC, get_judge
 
-turns = run_conversation(chat, SUPPORT_CONVERSATION)
+pytestmark = [pytest.mark.chatbot, pytest.mark.smoke]
 
 judge = get_judge()
 
@@ -21,12 +21,11 @@ turn_relevancy = TurnRelevancyMetric(threshold=0.5, model=judge)
 retention = KnowledgeRetentionMetric(threshold=0.5, model=judge)
 completeness = ConversationCompletenessMetric(threshold=0.5, model=judge)
 
-test_case = ConversationalTestCase(turns=turns)
 
-evaluate(
-    test_cases=[test_case],
-    metrics=[turn_relevancy, retention, completeness],
-    async_config=ASYNC_CONFIG,
-    identifier="test_chatbot",
-    display_config=REPORT_CONFIG,
-)
+def test_conversation_quality(support_conversation):
+    # support_conversation (evals/conftest.py) is the live run, shared with test_chatbot_geval.
+    assert_test(
+        ConversationalTestCase(turns=support_conversation),
+        [turn_relevancy, retention, completeness],
+        run_async=RUN_ASYNC,
+    )
