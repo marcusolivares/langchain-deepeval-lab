@@ -20,9 +20,10 @@ without ever touching this file again.
 import asyncio
 import sys
 from concurrent.futures import ThreadPoolExecutor
-from functools import cache
+from functools import cache, wraps
 from pathlib import Path
 
+from langchain_core.tools import StructuredTool
 from langchain_mcp_adapters.client import MultiServerMCPClient
 from langchain.agents import create_agent
 
@@ -37,13 +38,34 @@ from deepeval.tracing.context import update_current_trace
 # ---------------------------------------------------------------------------
 # Same agent as plain.py.
 # ---------------------------------------------------------------------------
+def run_in_worker_loop(coro):
+    """Run a coroutine on its own event loop in a worker thread, so it never
+    touches the caller's event loop (DeepEval's eval runner keeps one open)."""
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        return pool.submit(asyncio.run, coro).result()
+
+
+def with_sync_call(mcp_tool: StructuredTool) -> StructuredTool:
+    """Give an async-only MCP tool a sync implementation.
+
+    langchain-mcp-adapters builds its tools with a coroutine only, so the
+    agent's sync invoke() would raise NotImplementedError when the model calls
+    one. wraps() copies the coroutine's signature, which LangGraph reads to
+    decide what to inject (the tool runtime).
+    """
+
+    @wraps(mcp_tool.coroutine)
+    def call(*args, **kwargs):
+        return run_in_worker_loop(mcp_tool.coroutine(*args, **kwargs))
+
+    return mcp_tool.model_copy(update={"func": call})
+
+
 @cache
 def load_mcp_tools() -> list:
     """Start mcp_server.py over stdio and return its tools as LangChain tools.
 
-    Runs on the first build_agent() call, not at import. The async client runs
-    in a worker thread so it never touches the caller's event loop (DeepEval's
-    eval runner keeps one open).
+    Runs on the first build_agent() call, not at import.
     """
     client = MultiServerMCPClient({
         "shopease": {
@@ -52,8 +74,7 @@ def load_mcp_tools() -> list:
             "transport": "stdio",
         }
     })
-    with ThreadPoolExecutor(max_workers=1) as pool:
-        return pool.submit(asyncio.run, client.get_tools()).result()
+    return [with_sync_call(tool) for tool in run_in_worker_loop(client.get_tools())]
 
 
 def build_agent(llm=None):
