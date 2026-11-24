@@ -41,6 +41,12 @@ python -m agents.rag
 python -m agents.chatbot                        # interactive, type 'quit' to exit
 ```
 
+The offline tests in `tests/` swap every chat model and embedding for a fake, so they are free, take a few seconds and need no API keys. Plain `pytest` runs them (`testpaths = tests`). `tests/conftest.py` sets fake API keys before `load_dotenv()` runs, so a test that reaches a real API by mistake fails with an auth error instead of spending money.
+
+```bash
+pytest                                          # offline tests, free
+```
+
 The evals are pytest tests, run with DeepEval's runner. A metric below its threshold fails its test, and any failure makes the run exit non-zero. Every eval makes paid API calls; a full run costs about $0.50.
 
 ```bash
@@ -63,7 +69,7 @@ python -m evals.synthesize_goldens              # regenerate the goldens test_ag
 | `test_chatbot.py` | chatbot, smoke | TurnRelevancy + KnowledgeRetention + ConversationCompleteness |
 | `test_chatbot_geval.py` | chatbot | ConversationalGEval with custom criteria |
 
-Plain `pytest` is refused by `evals/conftest.py` before any test runs: the traced tests call `assert_test(golden=...)`, which only works under `deepeval test run`. `pytest --collect-only` is allowed and makes no API calls.
+`pytest evals/` is refused by `evals/conftest.py` before any test runs: the traced tests call `assert_test(golden=...)`, which only works under `deepeval test run`. `pytest --collect-only evals/` is allowed and makes no API calls.
 
 Switch vendor per run without editing `.env`: `LLM_PROVIDER=openai python -m agents.plain` (bash) or `$env:LLM_PROVIDER="openai"; python -m agents.plain` (PowerShell).
 
@@ -82,7 +88,10 @@ Switch vendor per run without editing `.env`: `LLM_PROVIDER=openai python -m age
 | `agents/tools/policy_search.py` | The RAG retriever: 9 policy documents in an `InMemoryVectorStore` with Voyage AI embeddings, the `search_policies` tool, and `retrieved_chunks()`, which pulls the chunks out of a run's `ToolMessage` artifacts. |
 | `agents/tools/mcp_server.py` | MCP server exposing `get_shipping_options`, started over stdio by `agents/instrumented.py` by file path. |
 | `policies.txt` | Source document for `evals/synthesize_goldens.py`. |
-| `pytest.ini` | Points pytest at `evals/` and registers the `smoke`, `agent`, `rag` and `chatbot` markers (`--strict-markers`, so a typo fails). |
+| `pytest.ini` | Points plain `pytest` at `tests/` and registers the `smoke`, `agent`, `rag` and `chatbot` markers (`--strict-markers`, so a typo fails). |
+| `tests/conftest.py` | Sets fake API keys and opts out of DeepEval telemetry, before any project module loads `.env`. |
+| `tests/fakes.py` | `FakeToolCallingModel` (a `GenericFakeChatModel` with a no-op `bind_tools()`), `fake_model(*replies)` and `tool_call(name, **args)` for scripting a model's replies. |
+| `tests/test_*.py` | Offline tests of the tools, the retriever, the agent loops (fake model, real tools and MCP server) and `run_conversation()`. |
 | `evals/common.py` | Shared eval helpers: `get_judge()`, `RUN_ASYNC`, `traced()`, `SYNTHESIZED_GOLDENS`, and the chatbot conversation driver `run_conversation()`. |
 | `evals/conftest.py` | Refuses plain `pytest` runs, and provides the session-scoped `support_conversation` fixture so the two chatbot evals share one paid conversation. |
 | `evals/synthesize_goldens.py` | Generates goldens from `policies.txt` with DeepEval's Synthesizer and saves them to `evals/datasets/synthesized_goldens.json`. |
@@ -145,7 +154,8 @@ The eval side adds the rest with `traced()` from `evals/common.py`: it wraps the
 ## Known issues
 
 - **`test_agent_untraced.py` scores low on purpose**: it passes a plain `LLMTestCase` with no trace, so the judge cannot see the tool call and assumes the answer is made up. `test_agent_tracing.py` runs the same check on a trace and passes. Kept as a baseline that shows why trace-level evals matter, and marked `xfail` so it does not fail the run.
-- **Known agent bug, marked `xfail`**: in `test_agent_quality.py`, the ORD-2099 return question fails because `get_order_status` does not return the order's category, so the agent cannot look up the refund policy. The `xfail` is non-strict: once the tool is fixed the case reports `XPASS`; remove the mark then.
+- **Known agent bug, marked `xfail`**: in `test_agent_quality.py`, the ORD-2099 return question fails because `get_order_status` does not return the order's category, so the agent cannot look up the refund policy. The `xfail` is non-strict: once the tool is fixed the case reports `XPASS`; remove the mark then. `tests/test_shop_tools.py` checks the same gap for free with a strict `xfail`, which fails the run once the tool is fixed.
+- **MCP tool fails on a sync call, marked `xfail`**: `langchain-mcp-adapters` builds async-only tools, and `support_agent()` runs the agent with the sync `invoke()`, so a call to `get_shipping_options` raises `NotImplementedError`. No eval asks a shipping question, so only `tests/test_agents.py` catches it (strict `xfail`).
 - **Synthesizer needs OpenAI**: DeepEval has no Anthropic or Voyage embedder, so `evals/synthesize_goldens.py` embeds `policies.txt` with OpenAI even when the judge is Claude. The evals themselves only read the saved goldens.
 - **Voyage free tier is 3 requests/minute**: `agents/tools/policy_search.py` embeds its 9 documents on the first search (one request) and each search embeds its query, so repeated RAG runs within a minute hit `RateLimitError` until a payment method is added.
 - **Windows console encoding**: when stdout is piped, Python on Windows encodes with cp1252 and crashes on emoji in model replies. Set `PYTHONIOENCODING=utf-8`.

@@ -163,6 +163,7 @@ cp .env.example .env                  # then fill in your keys
 python -m agents.instrumented         # run a bot on its own
 python -m agents.chatbot              # interactive; type 'quit' to exit
 
+pytest                                # offline tests: fake models, free, no keys needed
 deepeval test run evals/              # run every eval (about $0.50)
 deepeval test run evals/ -m smoke     # one suite per bot, about half the cost
 ```
@@ -212,7 +213,9 @@ agents/tools/shop.py           demo order/refund data and the two shared @tool f
 agents/tools/policy_search.py  RAG retriever: in-memory vector store + Voyage AI embeddings
 agents/tools/mcp_server.py     MCP server exposing get_shipping_options
 policies.txt                   source document for synthetic goldens
-pytest.ini                     test paths and the smoke/agent/rag/chatbot markers
+pytest.ini                     plain pytest runs tests/; the smoke/agent/rag/chatbot markers
+tests/fakes.py                 a scripted fake chat model for the offline tests
+tests/test_*.py                offline tests: tools, retriever, agent loops, eval helpers
 evals/common.py                judge factory, tracing wrapper, conversation driver
 evals/conftest.py              refuses plain pytest; shares one chatbot conversation
 evals/synthesize_goldens.py    generates and saves the synthetic goldens
@@ -227,9 +230,10 @@ evals/test_*.py                the eval suites above
   goldens (`python -m evals.synthesize_goldens`) needs `OPENAI_API_KEY` even
   when Claude is the judge. Until they are generated, `test_agent_synthesized`
   is skipped.
-- **Plain `pytest` is refused.** The traced evals only work under
-  `deepeval test run`, so `evals/conftest.py` stops a plain `pytest` run
-  before it pays for any agent call.
+- **The evals need DeepEval's runner.** Plain `pytest` runs only the
+  offline tests in `tests/`. The traced evals only work under
+  `deepeval test run`, so `evals/conftest.py` stops `pytest evals/` before
+  it pays for any agent call.
 - **The Voyage AI free tier allows 3 requests per minute.** The RAG agent
   embeds its documents on the first search and each query after that, so
   repeated runs within a minute are rate-limited.
