@@ -13,6 +13,8 @@ It uses an LLM (Claude by default, see config.py) to decide which tool
 to call and to compose the answer.
 """
 
+from functools import cache
+
 from langchain.agents import create_agent
 
 from config import get_chat_model
@@ -41,7 +43,10 @@ def build_agent(llm=None, extra_tools=()):
     )
 
 
-agent = build_agent()
+@cache
+def default_agent():
+    """The agent support_agent() runs, built on first use."""
+    return build_agent()
 
 
 # ---------------------------------------------------------------------------
@@ -49,7 +54,7 @@ agent = build_agent()
 # ---------------------------------------------------------------------------
 def support_agent(user_input: str) -> str:
     """Run the agent on a user message and return the final reply."""
-    result = agent.invoke({"messages": [{"role": "user", "content": user_input}]})
+    result = default_agent().invoke({"messages": [{"role": "user", "content": user_input}]})
     return result["messages"][-1].text
 
 

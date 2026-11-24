@@ -44,16 +44,11 @@ def test_instrumented_agent_calls_the_mcp_tool():
     assert "Express" in message.text
 
 
-def test_chatbot_turn_returns_reply_history_and_tools_called(monkeypatch):
-    # chat() uses the module-level model, so swap that for the fake.
-    monkeypatch.setattr(
-        chatbot,
-        "model",
-        chatbot.build_model(
-            fake_model(tool_call("get_order_status", order_id="ORD-1042"), "It has shipped.")
-        ),
+def test_chatbot_turn_returns_reply_history_and_tools_called():
+    model = chatbot.build_model(
+        fake_model(tool_call("get_order_status", order_id="ORD-1042"), "It has shipped.")
     )
-    reply, history, tools_called = chatbot.chat("Where is ORD-1042?", [])
+    reply, history, tools_called = chatbot.chat("Where is ORD-1042?", [], model=model)
 
     assert reply == "It has shipped."
     assert tools_called == [
@@ -66,10 +61,10 @@ def test_chatbot_turn_returns_reply_history_and_tools_called(monkeypatch):
     assert [type(m) for m in history] == [HumanMessage, AIMessage, ToolMessage, AIMessage]
 
 
-def test_chatbot_carries_history_into_the_next_turn(monkeypatch):
-    monkeypatch.setattr(chatbot, "model", chatbot.build_model(fake_model("Hi!", "You're welcome.")))
-    _, history, _ = chatbot.chat("Hello", [])
-    reply, history, tools_called = chatbot.chat("Thanks", history)
+def test_chatbot_carries_history_into_the_next_turn():
+    model = chatbot.build_model(fake_model("Hi!", "You're welcome."))
+    _, history, _ = chatbot.chat("Hello", [], model=model)
+    reply, history, tools_called = chatbot.chat("Thanks", history, model=model)
 
     assert reply == "You're welcome."
     assert tools_called == []

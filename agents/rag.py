@@ -18,6 +18,8 @@ What's new vs instrumented.py:
     Precision/Recall) can run
 """
 
+from functools import cache
+
 from langchain.agents import create_agent
 
 from config import get_chat_model
@@ -43,7 +45,11 @@ def build_agent(llm=None):
     )
 
 
-agent = build_agent()
+@cache
+def default_agent():
+    """The agent rag_support_agent() runs, built on first use."""
+    return build_agent()
+
 
 # DeepEval callback handler — captures LangChain spans automatically.
 deepeval_callback = CallbackHandler()
@@ -54,7 +60,7 @@ deepeval_callback = CallbackHandler()
 # ---------------------------------------------------------------------------
 def rag_support_agent(user_input: str) -> str:
     """Run the RAG agent and return the final reply."""
-    result = agent.invoke(
+    result = default_agent().invoke(
         {"messages": [{"role": "user", "content": user_input}]},
         config={"callbacks": [deepeval_callback]},
     )

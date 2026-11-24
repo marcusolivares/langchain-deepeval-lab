@@ -30,6 +30,8 @@ How to run standalone:
     python -m agents.chatbot
 """
 
+from functools import cache
+
 from langchain_core.messages import BaseMessage, HumanMessage, SystemMessage, ToolMessage
 
 from config import get_chat_model
@@ -62,7 +64,10 @@ def build_model(llm=None):
     return (llm or get_chat_model()).bind_tools(SHOP_TOOLS)
 
 
-model = build_model()
+@cache
+def default_model():
+    """The model chat() uses unless it is given one, built on first use."""
+    return build_model()
 
 
 # ---------------------------------------------------------------------------
@@ -71,9 +76,13 @@ model = build_model()
 def chat(
     user_message: str,
     history: list[BaseMessage],
+    model=None,
 ) -> tuple[str, list[BaseMessage], list[dict]]:
     """
     Send one user message, handle any tool calls, return the final reply.
+
+    model is a chat model with the tools bound, as build_model() returns;
+    default_model() unless given.
 
     Returns:
         reply        : final assistant text
@@ -81,6 +90,7 @@ def chat(
         tools_called : list of {"name": ..., "args": ..., "result": ...}
                        for all tools the model called this turn
     """
+    model = model or default_model()
     history = history + [HumanMessage(user_message)]
     tools_called = []
 
