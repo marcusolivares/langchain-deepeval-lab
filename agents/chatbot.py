@@ -33,10 +33,9 @@ How to run standalone:
 from langchain_core.messages import BaseMessage, HumanMessage, SystemMessage, ToolMessage
 
 from config import get_chat_model
-from agents.tools.shop import get_order_status, get_refund_policy
+from agents.tools.shop import SHOP_TOOLS
 
-TOOLS = [get_order_status, get_refund_policy]
-TOOLS_BY_NAME = {t.name: t for t in TOOLS}
+TOOLS_BY_NAME = {t.name: t for t in SHOP_TOOLS}
 
 # ---------------------------------------------------------------------------
 # System prompt
@@ -60,7 +59,7 @@ Rules:
 # ---------------------------------------------------------------------------
 def build_model(llm=None):
     """Bind the tools to a chat model. Uses the default from config.py unless llm is given."""
-    return (llm or get_chat_model()).bind_tools(TOOLS)
+    return (llm or get_chat_model()).bind_tools(SHOP_TOOLS)
 
 
 model = build_model()

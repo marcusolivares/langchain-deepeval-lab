@@ -16,22 +16,28 @@ to call and to compose the answer.
 from langchain.agents import create_agent
 
 from config import get_chat_model
-from agents.tools.shop import get_order_status, get_refund_policy
+from agents.tools.shop import SHOP_TOOLS
+
+SYSTEM_PROMPT = (
+    "You are a friendly customer-support agent. "
+    "Use the available tools to answer order and refund questions. "
+    "Keep replies short and helpful."
+)
 
 
 # ---------------------------------------------------------------------------
 # The agent — a LangGraph ReAct agent powered by the model from config.py.
 # ---------------------------------------------------------------------------
-def build_agent(llm=None):
-    """Build the agent. Uses the default model from config.py unless llm is given."""
+def build_agent(llm=None, extra_tools=()):
+    """Build the agent. Uses the default model from config.py unless llm is given.
+
+    extra_tools are added to the two shop tools: agents/instrumented.py passes
+    the tools it loads from the MCP server.
+    """
     return create_agent(
         model=llm or get_chat_model(),
-        tools=[get_order_status, get_refund_policy],
-        system_prompt=(
-            "You are a friendly customer-support agent. "
-            "Use the available tools to answer order and refund questions. "
-            "Keep replies short and helpful."
-        ),
+        tools=[*SHOP_TOOLS, *extra_tools],
+        system_prompt=SYSTEM_PROMPT,
     )
 
 

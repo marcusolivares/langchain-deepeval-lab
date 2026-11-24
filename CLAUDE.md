@@ -79,12 +79,12 @@ Switch vendor per run without editing `.env`: `LLM_PROVIDER=openai python -m age
 |---|---|
 | `config.py` | The one place the LLM vendor is chosen. Reads `LLM_PROVIDER` / `JUDGE_PROVIDER`, holds the model IDs in `MODELS`, and builds chat models with `get_chat_model()` (`init_chat_model` under the hood). Stays at the root because both `agents/` and `evals/` import it. |
 | `agents/` | The bots under evaluation. The evals import them as `agents.<module>`. |
-| `agents/plain.py` | Baseline LangChain agent with the two shop tools. No eval code; kept as a baseline to diff against `agents/instrumented.py`. |
-| `agents/instrumented.py` | The same agent plus DeepEval instrumentation and one extra tool loaded from `tools/mcp_server.py`. The agent evals import `support_agent` from here. |
+| `agents/plain.py` | Baseline LangChain agent: the shop tools and `SYSTEM_PROMPT`. No eval code. `build_agent(llm=None, extra_tools=())` is also how `agents/instrumented.py` builds its agent. |
+| `agents/instrumented.py` | `plain.build_agent()` plus the tools loaded from `tools/mcp_server.py`, with DeepEval instrumentation. The agent evals import `support_agent` from here. |
 | `agents/rag.py` | Agent with one tool, `search_policies`. Retrieved chunks are forwarded to the trace as `retrieval_context`. |
 | `agents/chatbot.py` | Multi-turn chatbot that runs its own tool-call loop over a model with `bind_tools()`, returning `(reply, history, tools_called)` per turn. |
 | `agents/tools/` | Every tool the bots call. New tools go here, not in the agent modules. |
-| `agents/tools/shop.py` | The ShopEasy demo data (`ORDERS`, `REFUND_POLICIES`) and the two `@tool` functions `get_order_status` and `get_refund_policy`, shared by the agents and the chatbot. |
+| `agents/tools/shop.py` | The ShopEasy demo data (`ORDERS`, `REFUND_POLICIES`) and the two `@tool` functions `get_order_status` and `get_refund_policy`, listed in `SHOP_TOOLS`, which the agents and the chatbot are built with. |
 | `agents/tools/policy_search.py` | The RAG retriever: 9 policy documents in an `InMemoryVectorStore` with Voyage AI embeddings, the `search_policies` tool, and `retrieved_chunks()`, which pulls the chunks out of a run's `ToolMessage` artifacts. |
 | `agents/tools/mcp_server.py` | MCP server exposing `get_shipping_options`, started over stdio by `agents/instrumented.py` by file path. |
 | `policies.txt` | Source document for `evals/synthesize_goldens.py`. |
@@ -100,7 +100,7 @@ Switch vendor per run without editing `.env`: `LLM_PROVIDER=openai python -m age
 ## Architecture
 
 **Dependency injection**: nothing outside `config.py` names a vendor or model. Each bot exposes a factory that takes the model as an optional argument and falls back to the default from `config.py`:
-- `build_agent(llm=None)` in `agents/plain.py`, `agents/instrumented.py`, `agents/rag.py`
+- `build_agent(llm=None)` in `agents/plain.py` (which also takes `extra_tools`), `agents/instrumented.py`, `agents/rag.py`
 - `build_model(llm=None)` in `chatbot.py` (binds the shop tools)
 - `get_judge(provider=JUDGE_PROVIDER)` in `evals/common.py` (`AnthropicModel` or `OpenAIModel`)
 

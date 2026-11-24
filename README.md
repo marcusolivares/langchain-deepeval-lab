@@ -76,8 +76,9 @@ def test_task_completion_and_tool_use(golden):
     assert_test(golden=golden, metrics=[task_completion, tool_correctness])
 ```
 
-`agents/plain.py` is the same agent without any DeepEval code, so you can
-diff the two files.
+`agents/plain.py` is the same agent without any DeepEval code.
+`agents/instrumented.py` builds it with `plain.build_agent()`, so the rest of
+that file is the MCP tool and the four additions above.
 
 ---
 
@@ -206,7 +207,7 @@ Model IDs live in `MODELS` in `config.py`.
 ```
 config.py                      vendor and model selection (shared by agents and evals)
 agents/plain.py                tool-calling agent, no eval code
-agents/instrumented.py         the same agent with DeepEval tracing and an MCP tool
+agents/instrumented.py         the plain agent plus an MCP tool, with DeepEval tracing
 agents/rag.py                  RAG agent: retrieves policies before answering
 agents/chatbot.py              multi-turn chatbot with a manual tool-call loop
 agents/tools/shop.py           demo order/refund data and the two shared @tool functions

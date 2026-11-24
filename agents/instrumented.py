@@ -1,9 +1,11 @@
 """
 instrumented.py
 ===============
-SAME agent as plain.py, with DeepEval observability added.
+The plain.py agent plus one tool from an MCP server, with DeepEval
+observability added.
 
-What changed vs plain.py? Only 4 things — all marked with "NEW":
+build_agent() calls plain.build_agent(), so the prompt and the shop tools
+are plain.py's own. The DeepEval additions are 4 things, all marked with "NEW":
 
   (1) Import CallbackHandler from deepeval.integrations.langchain
   (2) Build the callback handler once (no metrics baked in — metrics are
@@ -25,10 +27,8 @@ from pathlib import Path
 
 from langchain_core.tools import StructuredTool
 from langchain_mcp_adapters.client import MultiServerMCPClient
-from langchain.agents import create_agent
 
-from config import get_chat_model
-from agents.tools.shop import get_order_status, get_refund_policy
+from agents import plain
 
 # --- (1) NEW: import DeepEval tracing primitives --------------------------
 from deepeval.integrations.langchain import CallbackHandler
@@ -36,7 +36,7 @@ from deepeval.tracing.context import update_current_trace
 
 
 # ---------------------------------------------------------------------------
-# Same agent as plain.py.
+# The plain.py agent, plus the tools the MCP server exposes.
 # ---------------------------------------------------------------------------
 def run_in_worker_loop(coro):
     """Run a coroutine on its own event loop in a worker thread, so it never
@@ -78,16 +78,9 @@ def load_mcp_tools() -> list:
 
 
 def build_agent(llm=None):
-    """Build the agent. Uses the default model from config.py unless llm is given."""
-    return create_agent(
-        model=llm or get_chat_model(),
-        tools=[get_order_status, get_refund_policy] + load_mcp_tools(),
-        system_prompt=(
-            "You are a friendly customer-support agent. "
-            "Use the available tools to answer order and refund questions. "
-            "Keep replies short and helpful."
-        ),
-    )
+    """Build the plain.py agent with the MCP tools added. Uses the default
+    model from config.py unless llm is given."""
+    return plain.build_agent(llm, extra_tools=load_mcp_tools())
 
 
 @cache

@@ -56,3 +56,7 @@ def get_refund_policy(category: str) -> str:
     if not policy:
         return f"No refund policy on file for '{category}'."
     return policy
+
+
+# The tool list the agents and the chatbot are built with.
+SHOP_TOOLS = [get_order_status, get_refund_policy]
