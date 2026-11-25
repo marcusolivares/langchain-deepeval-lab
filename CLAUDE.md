@@ -102,7 +102,7 @@ Switch vendor per run without editing `.env`: `LLM_PROVIDER=openai python -m age
 **Dependency injection**: nothing outside `config.py` names a vendor or model. Each bot exposes a factory that takes the model as an optional argument and falls back to the default from `config.py`:
 - `build_agent(llm=None)` in `agents/plain.py` (which also takes `extra_tools`), `agents/instrumented.py`, `agents/rag.py`
 - `build_model(llm=None)` in `chatbot.py` (binds the shop tools)
-- `get_judge(provider=JUDGE_PROVIDER)` in `evals/common.py` (`AnthropicModel` or `OpenAIModel`)
+- `get_judge(provider=JUDGE_PROVIDER)` in `evals/common.py` (`AnthropicModel` or `OpenAIModel`), `cache`d so every eval shares one judge
 
 Each module builds a default instance on first use, so the entry points (`support_agent`, `rag_support_agent`, `chat`) keep a simple signature and importing a module builds nothing: `default_agent()` in `agents/plain.py`, `agents/instrumented.py` and `agents/rag.py`, and `default_model()` in `agents/chatbot.py`, all `functools.cache`d. `chat()` also takes `model=`, so a test can pass a fake. Two defaults call out when built: `instrumented.default_agent()` starts the MCP server via `load_mcp_tools()`, in a worker thread so it never touches DeepEval's event loop (`with_sync_call()` gives each MCP tool a sync implementation, since `langchain-mcp-adapters` builds them async-only and the agent runs with the sync `invoke()`), and `policy_search.get_vector_store()`, also `cache`d, embeds the documents on the first search. Replies are read with `message.text`, not `.content`, because Claude can return a list of content blocks.
 

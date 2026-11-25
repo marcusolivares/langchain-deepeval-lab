@@ -10,6 +10,7 @@ runner, which fails the run when a metric scores below its threshold:
     deepeval test run evals/test_rag_agent.py
 """
 
+from functools import cache
 from pathlib import Path
 
 from deepeval.dataset import Golden
@@ -23,8 +24,9 @@ from config import JUDGE_PROVIDER, MODELS
 SYNTHESIZED_GOLDENS = Path(__file__).resolve().parent / "datasets" / "synthesized_goldens.json"
 
 
+@cache
 def get_judge(provider: str = JUDGE_PROVIDER):
-    """Return the DeepEval judge model for the given provider."""
+    """Return the DeepEval judge model for the given provider, built once and shared."""
     model = MODELS[provider]
     if provider == "anthropic":
         # Judging is short classification and extraction work, so low effort
