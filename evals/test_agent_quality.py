@@ -9,7 +9,7 @@ from deepeval.metrics import (
     StepEfficiencyMetric,
 )
 
-from evals.common import get_judge, run_support_agent
+from evals.common import get_judge, load_goldens, run_support_agent
 
 pytestmark = pytest.mark.agent
 
@@ -26,23 +26,8 @@ prompt_alignment = PromptAlignmentMetric(
     model=judge,
 )
 
-GOLDENS = [
-    Golden(input="Where is my order ORD-1042?"),
-    Golden(input="What's the refund policy for electronics?"),
-    pytest.param(
-        Golden(input="I want to return order ORD-2099, what should I do?"),
-        marks=pytest.mark.xfail(
-            reason=(
-                "Known agent bug: get_order_status does not return the order's "
-                "category, so the agent cannot look up the refund policy"
-            ),
-            strict=False,
-        ),
-    ),
-]
 
-
-@pytest.mark.parametrize("golden", GOLDENS, ids=lambda g: g.input)
+@pytest.mark.parametrize("golden", load_goldens("agent_quality"))
 def test_reply_quality(golden: Golden):
     run_support_agent(golden)
     assert_test(

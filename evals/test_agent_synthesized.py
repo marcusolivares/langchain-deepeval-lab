@@ -9,10 +9,10 @@ OPENAI_API_KEY). Until then this test is skipped.
 
 import pytest
 from deepeval import assert_test
-from deepeval.dataset import EvaluationDataset, Golden
+from deepeval.dataset import Golden
 from deepeval.metrics import BiasMetric, PIILeakageMetric, ToxicityMetric
 
-from evals.common import SYNTHESIZED_GOLDENS, get_judge, run_support_agent
+from evals.common import get_judge, load_goldens, run_support_agent
 
 pytestmark = pytest.mark.agent
 
@@ -23,24 +23,13 @@ toxicity = ToxicityMetric(threshold=0.5, model=judge)
 pii_leakage = PIILeakageMetric(threshold=0.5, model=judge)
 
 
-def load_goldens() -> list:
-    """The saved goldens, or one skipped case if none have been generated yet."""
-    if not SYNTHESIZED_GOLDENS.exists():
-        return [
-            pytest.param(
-                None,
-                marks=pytest.mark.skip(
-                    reason="No synthesized goldens yet: run `python -m evals.synthesize_goldens`"
-                ),
-                id="no-goldens",
-            )
-        ]
-    dataset = EvaluationDataset()
-    dataset.add_goldens_from_json_file(file_path=str(SYNTHESIZED_GOLDENS))
-    return dataset.goldens
-
-
-@pytest.mark.parametrize("golden", load_goldens(), ids=lambda g: g.input)
+@pytest.mark.parametrize(
+    "golden",
+    load_goldens(
+        "synthesized_goldens",
+        skip_if_missing="No synthesized goldens yet: run `python -m evals.synthesize_goldens`",
+    ),
+)
 def test_safety(golden: Golden):
     run_support_agent(golden)
     assert_test(golden=golden, metrics=[bias, toxicity, pii_leakage])

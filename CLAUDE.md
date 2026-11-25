@@ -91,9 +91,10 @@ Switch vendor per run without editing `.env`: `LLM_PROVIDER=openai python -m age
 | `pytest.ini` | Points plain `pytest` at `tests/` and registers the `smoke`, `agent`, `rag` and `chatbot` markers (`--strict-markers`, so a typo fails). |
 | `tests/conftest.py` | Sets fake API keys and opts out of DeepEval telemetry, before any project module loads `.env`. |
 | `tests/fakes.py` | `FakeToolCallingModel` (a `GenericFakeChatModel` with a no-op `bind_tools()`), `fake_model(*replies)` and `tool_call(name, **args)` for scripting a model's replies. |
-| `tests/test_*.py` | Offline tests of the tools, the retriever, the agent loops (fake model, real tools and MCP server) and `run_conversation()`. |
-| `evals/common.py` | Shared eval helpers: `get_judge()`, `RUN_ASYNC`, `traced()` and the traced runners built with it (`run_support_agent`, `run_rag_support_agent`), `SYNTHESIZED_GOLDENS`, and the chatbot conversation driver `run_conversation()`. |
+| `tests/test_*.py` | Offline tests of the tools, the retriever, the agent loops (fake model, real tools and MCP server), `run_conversation()`, `load_goldens()` and every saved dataset. |
+| `evals/common.py` | Shared eval helpers: `get_judge()`, `RUN_ASYNC`, `load_goldens()`, `traced()` and the traced runners built with it (`run_support_agent`, `run_rag_support_agent`), `SYNTHESIZED_GOLDENS`, and the chatbot conversation driver `run_conversation()`. |
 | `evals/conftest.py` | Refuses plain `pytest` runs, and provides the session-scoped `support_conversation` fixture so the two chatbot evals share one paid conversation. |
+| `evals/datasets/*.json` | The goldens, one file per eval, loaded with `load_goldens(name)` as pytest params named after their input. A golden whose `additional_metadata` has an `xfail` reason is marked as a non-strict expected failure. `synthesized_goldens.json` is generated, the others are written by hand. |
 | `evals/synthesize_goldens.py` | Generates goldens from `policies.txt` with DeepEval's Synthesizer and saves them to `evals/datasets/synthesized_goldens.json`. |
 | `evals/test_*.py` | The evals listed under Running. |
 
@@ -154,7 +155,8 @@ The eval side adds the rest with `traced()` from `evals/common.py`: it wraps the
 ## Known issues
 
 - **`test_agent_untraced.py` scores low on purpose**: it passes a plain `LLMTestCase` with no trace, so the judge cannot see the tool call and assumes the answer is made up. `test_agent_tracing.py` runs the same check on a trace and passes. Kept as a baseline that shows why trace-level evals matter, and marked `xfail` so it does not fail the run.
-- **Known agent bug, marked `xfail`**: in `test_agent_quality.py`, the ORD-2099 return question fails because `get_order_status` does not return the order's category, so the agent cannot look up the refund policy. The `xfail` is non-strict: once the tool is fixed the case reports `XPASS`; remove the mark then. `tests/test_shop_tools.py` checks the same gap for free with a strict `xfail`, which fails the run once the tool is fixed.- **Synthesizer needs OpenAI**: DeepEval has no Anthropic or Voyage embedder, so `evals/synthesize_goldens.py` embeds `policies.txt` with OpenAI even when the judge is Claude. The evals themselves only read the saved goldens.
+- **Known agent bug, marked `xfail`**: in `test_agent_quality.py`, the ORD-2099 return question (`xfail` in `evals/datasets/agent_quality.json`) fails because `get_order_status` does not return the order's category, so the agent cannot look up the refund policy. The `xfail` is non-strict: once the tool is fixed the case reports `XPASS`; remove the mark then. `tests/test_shop_tools.py` checks the same gap for free with a strict `xfail`, which fails the run once the tool is fixed.
+- **Synthesizer needs OpenAI**: DeepEval has no Anthropic or Voyage embedder, so `evals/synthesize_goldens.py` embeds `policies.txt` with OpenAI even when the judge is Claude. The evals themselves only read the saved goldens.
 - **Voyage free tier is 3 requests/minute**: `agents/tools/policy_search.py` embeds its 9 documents on the first search (one request) and each search embeds its query, so repeated RAG runs within a minute hit `RateLimitError` until a payment method is added.
 - **Windows console encoding**: when stdout is piped, Python on Windows encodes with cp1252 and crashes on emoji in model replies. Set `PYTHONIOENCODING=utf-8`.
 - **`create_react_agent` deprecation**: migrated to `from langchain.agents import create_agent` with `system_prompt=` replacing `prompt=`. Requires the `langchain` base package.

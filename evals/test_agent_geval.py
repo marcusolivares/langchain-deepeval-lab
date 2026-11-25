@@ -6,7 +6,7 @@ from deepeval.dataset import Golden
 from deepeval.metrics import GEval
 from deepeval.test_case import SingleTurnParams
 
-from evals.common import get_judge, run_support_agent
+from evals.common import get_judge, load_goldens, run_support_agent
 
 pytestmark = pytest.mark.agent
 
@@ -26,15 +26,8 @@ correctness = GEval(
     ],
 )
 
-GOLDENS = [
-    Golden(
-        input="Where is my order ORD-1042?",
-        expected_output="order ORD-1042 is shipped and will arrive by May 13th",
-    )
-]
 
-
-@pytest.mark.parametrize("golden", GOLDENS, ids=lambda g: g.input)
+@pytest.mark.parametrize("golden", load_goldens("agent_geval"))
 def test_correctness(golden: Golden):
     run_support_agent(golden)
     assert_test(golden=golden, metrics=[correctness])

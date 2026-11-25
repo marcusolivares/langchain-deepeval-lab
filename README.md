@@ -60,17 +60,22 @@ def support_agent(user_input: str) -> str:
 ```
 
 Each eval is a pytest test. It runs the agent inside a trace, attaches the
-expected values from the golden, and asserts on the scores:
+expected values from the golden, and asserts on the scores. The goldens are
+saved in `evals/datasets/`, one JSON file per eval:
+
+```json
+[
+  {
+    "input": "Where is my order ORD-1042?",
+    "expected_tools": [{"name": "get_order_status"}]
+  }
+]
+```
 
 ```python
 run_support_agent = traced(support_agent, name="support_agent")  # evals/common.py
 
-GOLDENS = [
-    Golden(input="Where is my order ORD-1042?",
-           expected_tools=[ToolCall(name="get_order_status")]),
-]
-
-@pytest.mark.parametrize("golden", GOLDENS)
+@pytest.mark.parametrize("golden", load_goldens("agent_tracing"))
 def test_task_completion_and_tool_use(golden):
     run_support_agent(golden)
     assert_test(golden=golden, metrics=[task_completion, tool_correctness])
@@ -217,8 +222,9 @@ policies.txt                   source document for synthetic goldens
 pytest.ini                     plain pytest runs tests/; the smoke/agent/rag/chatbot markers
 tests/fakes.py                 a scripted fake chat model for the offline tests
 tests/test_*.py                offline tests: tools, retriever, agent loops, eval helpers
-evals/common.py                judge factory, tracing wrapper, conversation driver
+evals/common.py                judge factory, golden loader, tracing wrapper, conversation driver
 evals/conftest.py              refuses plain pytest; shares one chatbot conversation
+evals/datasets/*.json          the goldens each eval scores
 evals/synthesize_goldens.py    generates and saves the synthetic goldens
 evals/test_*.py                the eval suites above
 ```

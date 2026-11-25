@@ -12,7 +12,7 @@ Setup on a new machine (from [CLAUDE.md](CLAUDE.md)):
 pip install -r requirements.txt
 git config core.hooksPath .githooks   # Conventional Commits hook
 cp .env.example .env                  # then fill in the keys
-pytest                                # offline tests: should be 14 passed, 1 xfailed
+pytest                                # offline tests: should be 20 passed, 1 xfailed
 ```
 
 `.vscode/` is gitignored, so recreate it by hand if you use VS Code:
@@ -91,7 +91,8 @@ Then:
   policy) and `data/orders.json`.
 - Build the RAG chunks from its sections. Make `REFUND_POLICIES`, the MCP
   shipping tool and `evals/synthesize_goldens.py` read from it too.
-- Update the expected outputs in `evals/test_rag_agent.py` (line 40 says $15).
+- Update the expected outputs in `evals/datasets/rag_agent.json` (the express
+  shipping golden says $15).
 - Regenerate the synthesized goldens and rerun the evals (both paid).
 - Add an offline test that the RAG chunks and the tools agree.
 
@@ -169,7 +170,7 @@ evals/           paid, deepeval test run
 `get_order_status` does not return the order's category, so the agent cannot
 look up the refund policy for "I want to return order ORD-2099". The README's
 Results section presents this as a real finding. A strict `xfail` in
-`tests/test_shop_tools.py` and a non-strict one in `evals/test_agent_quality.py`
+`tests/test_shop_tools.py` and a non-strict one in `evals/datasets/agent_quality.json`
 record it. To fix it, include the category in the tool's output and remove
 both marks. Confirming the eval now passes needs a paid run.
 

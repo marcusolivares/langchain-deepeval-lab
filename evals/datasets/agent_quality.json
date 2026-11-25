@@ -1,0 +1,14 @@
+[
+  {
+    "input": "Where is my order ORD-1042?"
+  },
+  {
+    "input": "What's the refund policy for electronics?"
+  },
+  {
+    "input": "I want to return order ORD-2099, what should I do?",
+    "additional_metadata": {
+      "xfail": "Known agent bug: get_order_status does not return the order's category, so the agent cannot look up the refund policy"
+    }
+  }
+]

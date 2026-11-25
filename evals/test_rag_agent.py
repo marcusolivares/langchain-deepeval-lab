@@ -12,7 +12,7 @@ from deepeval.metrics import (
     FaithfulnessMetric,
 )
 
-from evals.common import get_judge, run_rag_support_agent
+from evals.common import get_judge, load_goldens, run_rag_support_agent
 
 pytestmark = [pytest.mark.rag, pytest.mark.smoke]
 
@@ -23,25 +23,8 @@ recall = ContextualRecallMetric(threshold=0.7, model=judge)
 relevancy = AnswerRelevancyMetric(threshold=0.7, model=judge)
 faithfulness = FaithfulnessMetric(threshold=0.7, model=judge)
 
-GOLDENS = [
-    Golden(
-        input="What is the return policy for electronics?",
-        expected_output=(
-            "Electronics can be returned within 15 days of delivery if unopened "
-            "and in original packaging. Refunds take 5–7 business days."
-        ),
-    ),
-    Golden(
-        input="How long does express shipping take and what does it cost?",
-        expected_output=(
-            "Express shipping takes 1–2 business days and costs $15. "
-            "Orders placed before 2 PM are dispatched the same day."
-        ),
-    ),
-]
 
-
-@pytest.mark.parametrize("golden", GOLDENS, ids=lambda g: g.input)
+@pytest.mark.parametrize("golden", load_goldens("rag_agent"))
 def test_retrieval_and_answer(golden: Golden):
     run_rag_support_agent(golden)
     assert_test(golden=golden, metrics=[precision, recall, relevancy, faithfulness])
