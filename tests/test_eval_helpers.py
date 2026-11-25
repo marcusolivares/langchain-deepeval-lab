@@ -4,9 +4,11 @@ import json
 
 import pytest
 from deepeval.dataset import Golden
+from deepeval.test_case import ToolCall
+from deepeval.tracing.context import current_trace_context
 
 from evals import common
-from evals.common import DATASETS, load_goldens, run_conversation
+from evals.common import DATASETS, load_goldens, run_conversation, traced
 
 
 @pytest.mark.parametrize("path", sorted(DATASETS.glob("*.json")), ids=lambda p: p.name)
@@ -52,6 +54,34 @@ def test_load_goldens_skips_a_missing_dataset_only_when_asked(tmp_path, monkeypa
     assert (mark.name, mark.kwargs) == ("skip", {"reason": "not generated"})
     with pytest.raises(FileNotFoundError):
         load_goldens("missing")
+
+
+def test_traced_copies_the_golden_expectations_onto_the_trace():
+    seen = {}
+
+    def agent(question):
+        # Stands in for an agent: reads the trace it runs inside.
+        trace = current_trace_context.get()
+        seen.update(
+            question=question,
+            expected_output=trace.expected_output,
+            expected_tools=trace.expected_tools,
+        )
+        return "It has shipped."
+
+    run = traced(agent, name="fake_agent")
+    golden = Golden(
+        input="Where is ORD-1042?",
+        expected_output="Shipped",
+        expected_tools=[ToolCall(name="get_order_status")],
+    )
+
+    assert run(golden) == "It has shipped."
+    assert seen == {
+        "question": "Where is ORD-1042?",
+        "expected_output": "Shipped",
+        "expected_tools": [ToolCall(name="get_order_status")],
+    }
 
 
 def test_run_conversation_builds_turns_and_threads_history():

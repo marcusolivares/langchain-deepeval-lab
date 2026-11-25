@@ -89,9 +89,9 @@ Switch vendor per run without editing `.env`: `LLM_PROVIDER=openai python -m age
 | `agents/tools/mcp_server.py` | MCP server exposing `get_shipping_options`, started over stdio by `agents/instrumented.py` by file path. |
 | `policies.txt` | Source document for `evals/synthesize_goldens.py`. |
 | `pytest.ini` | Points plain `pytest` at `tests/` and registers the `smoke`, `agent`, `rag` and `chatbot` markers (`--strict-markers`, so a typo fails). |
-| `tests/conftest.py` | Sets fake API keys and opts out of DeepEval telemetry, before any project module loads `.env`. |
+| `tests/conftest.py` | Sets fake API keys, opts out of DeepEval telemetry and turns off trace upload to Confident AI (`CONFIDENT_TRACING_ENABLED=NO`), before any project module loads `.env`. |
 | `tests/fakes.py` | `FakeToolCallingModel` (a `GenericFakeChatModel` with a no-op `bind_tools()`), `fake_model(*replies)` and `tool_call(name, **args)` for scripting a model's replies. |
-| `tests/test_*.py` | Offline tests of the tools, the retriever, the agent loops (fake model, real tools and MCP server), `run_conversation()`, `load_goldens()` and every saved dataset. |
+| `tests/test_*.py` | Offline tests of the tools, the retriever, the agent loops (fake model, real tools and MCP server), `traced()`, `run_conversation()`, `load_goldens()` and every saved dataset. |
 | `evals/common.py` | Shared eval helpers: `get_judge()`, `RUN_ASYNC`, `load_goldens()`, `traced()` and the traced runners built with it (`run_support_agent`, `run_rag_support_agent`), `SYNTHESIZED_GOLDENS`, and the chatbot conversation driver `run_conversation()`. |
 | `evals/conftest.py` | Refuses plain `pytest` runs, and provides the session-scoped `support_conversation` fixture so the two chatbot evals share one paid conversation. |
 | `evals/datasets/*.json` | The goldens, one file per eval, loaded with `load_goldens(name)` as pytest params named after their input. A golden whose `additional_metadata` has an `xfail` reason is marked as a non-strict expected failure. `synthesized_goldens.json` is generated, the others are written by hand. |

@@ -19,3 +19,7 @@ for key in ("ANTHROPIC_API_KEY", "OPENAI_API_KEY", "VOYAGE_API_KEY"):
 
 # Importing DeepEval would otherwise send usage telemetry.
 os.environ["DEEPEVAL_TELEMETRY_OPT_OUT"] = "1"
+
+# Traces are still built (tests read them), but never uploaded to Confident AI,
+# even when a CONFIDENT_API_KEY is configured.
+os.environ["CONFIDENT_TRACING_ENABLED"] = "NO"

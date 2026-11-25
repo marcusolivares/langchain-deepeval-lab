@@ -12,7 +12,7 @@ Setup on a new machine (from [CLAUDE.md](CLAUDE.md)):
 pip install -r requirements.txt
 git config core.hooksPath .githooks   # Conventional Commits hook
 cp .env.example .env                  # then fill in the keys
-pytest                                # offline tests: should be 20 passed, 1 xfailed
+pytest                                # offline tests: should be 21 passed, 1 xfailed
 ```
 
 `.vscode/` is gitignored, so recreate it by hand if you use VS Code:
