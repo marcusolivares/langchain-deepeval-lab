@@ -1,7 +1,7 @@
 # Refactor plan
 
-The remaining refactor steps for this repo. Steps 2 and 3 and an MCP bug fix
-are done (see below); this file lists what is left so the work can continue on
+The remaining refactor steps for this repo. Steps 2, 3 and 5 and an MCP bug
+fix are done (see below); this file lists what is left so the work can continue on
 any machine. Delete it once the plan is finished.
 
 ## Picking this up
@@ -60,10 +60,16 @@ How the work is done:
 | `feaba39` | fix(agents): MCP tools get a sync implementation, so `invoke()` can call `get_shipping_options` |
 | `001e1d1` | refactor(agents): `instrumented.build_agent()` reuses `plain.build_agent()`; `SHOP_TOOLS` in `shop.py` |
 | `2334088` | refactor(agents): every default bot is built on first use; `chat()` takes `model=` |
+| `fb7b129` | refactor(evals): `get_judge()` is `cache`d, so every eval shares one judge |
+| `77e7735` | refactor(evals): `run_support_agent` and `run_rag_support_agent` are defined once in `evals/common.py` |
+| `e9e3236` | refactor(evals): goldens in `evals/datasets/*.json`, loaded by `load_goldens()`; a known bug's `xfail` reason lives in the golden's `additional_metadata` |
+| `c26b2e9` | test: offline test for `traced()`; `tests/conftest.py` sets `CONFIDENT_TRACING_ENABLED=NO` so tests never upload traces |
+| `7efa6d9` | test(evals): tool-correctness golden for the MCP tool `get_shipping_options` (paid run passed) |
+| `1c60f80` | refactor(evals): `PromptAlignmentMetric` scores `plain.PERSONA` and `plain.REPLY_STYLE`; with `TOOL_USE` it scored 0.0, since it cannot see tool calls |
 
 ## Remaining
 
-Order: the code-only parts of steps 4 and 5 can go now. Anything that
+Order: the code-only parts of step 4 can go now. Anything that
 changes eval data (goldens, the chatbot conversation, expected outputs) waits
 for step 1.
 
@@ -110,30 +116,10 @@ Then:
   directly, and correct the docstring.
 - Offline tests with the fake model (`tests/fakes.py`): the step limit, and an
   unknown tool name.
-- After step 1: turn 4 of `SUPPORT_CONVERSATION` (`evals/common.py:66`) asks
+- After step 1: turn 4 of `SUPPORT_CONVERSATION` in `evals/common.py` asks
   about express shipping, but the chatbot has no shipping tool. Either give it
   `get_shipping_options` or change the turn. This changes eval scores (paid
   rerun).
-
-### Step 5: evals, repeated code and coverage
-
-- `traced(support_agent, name="support_agent")` is repeated in 4 files and
-  `traced(rag_support_agent, ...)` in 1. Define the traced runners once in
-  `evals/common.py`.
-- `get_judge()` is called in 9 files. `@cache` it.
-- Move the inline `GOLDENS` lists to `evals/datasets/*.json`. Load them with
-  one helper generalized from `load_goldens()` in
-  `evals/test_agent_synthesized.py`.
-- No eval checks that the agent picks the MCP tool. Add a golden with
-  `expected_tools=[ToolCall(name="get_shipping_options")]` to
-  `evals/test_agent_tracing.py` (paid to verify).
-- `evals/test_agent_quality.py:25-27` hand-copies part of the system prompt for
-  `PromptAlignmentMetric`. Use `plain.SYSTEM_PROMPT` instead. This changes what
-  the metric checks (paid rerun).
-- Offline test for `traced()`: that it copies `expected_output` and
-  `expected_tools` onto the trace. Only with no Confident AI key loaded, since
-  under plain pytest DeepEval would upload the trace. Check how to stop that
-  in `tests/conftest.py` first.
 
 ### Step 6: packaging, layout and CI
 
