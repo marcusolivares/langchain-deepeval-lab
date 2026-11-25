@@ -60,7 +60,7 @@ python -m evals.synthesize_goldens              # regenerate the goldens test_ag
 
 | File | Marker | Metrics |
 |---|---|---|
-| `test_agent_tracing.py` | agent, smoke | TaskCompletion + ToolCorrectness on traced goldens |
+| `test_agent_tracing.py` | agent, smoke | TaskCompletion + ToolCorrectness on traced goldens, one per tool (including the MCP tool) |
 | `test_agent_quality.py` | agent | AnswerRelevancy + PromptAlignment + StepEfficiency |
 | `test_agent_geval.py` | agent | GEval correctness against expected_output |
 | `test_agent_untraced.py` | agent | TaskCompletion on a plain test case, no trace (expected to fail) |

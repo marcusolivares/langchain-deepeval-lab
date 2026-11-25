@@ -1,4 +1,7 @@
-"""Agent: task completion and tool correctness, scored on the full trace."""
+"""Agent: task completion and tool correctness, scored on the full trace.
+
+One golden per tool, including get_shipping_options from the MCP server.
+"""
 
 import pytest
 from deepeval import assert_test

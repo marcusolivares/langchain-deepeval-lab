@@ -6,5 +6,9 @@
   {
     "input": "What is refund policy for electronics?",
     "expected_tools": [{"name": "get_refund_policy"}]
+  },
+  {
+    "input": "What shipping options do you offer?",
+    "expected_tools": [{"name": "get_shipping_options"}]
   }
 ]
