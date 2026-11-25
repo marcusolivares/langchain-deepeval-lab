@@ -20,11 +20,11 @@ from langchain.agents import create_agent
 from config import get_chat_model
 from agents.tools.shop import SHOP_TOOLS
 
-SYSTEM_PROMPT = (
-    "You are a friendly customer-support agent. "
-    "Use the available tools to answer order and refund questions. "
-    "Keep replies short and helpful."
-)
+# The system prompt, one instruction per sentence.
+PERSONA = "You are a friendly customer-support agent."
+TOOL_USE = "Use the available tools to answer order and refund questions."
+REPLY_STYLE = "Keep replies short and helpful."
+SYSTEM_PROMPT = " ".join([PERSONA, TOOL_USE, REPLY_STYLE])
 
 
 # ---------------------------------------------------------------------------

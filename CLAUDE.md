@@ -79,7 +79,7 @@ Switch vendor per run without editing `.env`: `LLM_PROVIDER=openai python -m age
 |---|---|
 | `config.py` | The one place the LLM vendor is chosen. Reads `LLM_PROVIDER` / `JUDGE_PROVIDER`, holds the model IDs in `MODELS`, and builds chat models with `get_chat_model()` (`init_chat_model` under the hood). Stays at the root because both `agents/` and `evals/` import it. |
 | `agents/` | The bots under evaluation. The evals import them as `agents.<module>`. |
-| `agents/plain.py` | Baseline LangChain agent: the shop tools and `SYSTEM_PROMPT`. No eval code. `build_agent(llm=None, extra_tools=())` is also how `agents/instrumented.py` builds its agent. |
+| `agents/plain.py` | Baseline LangChain agent: the shop tools and `SYSTEM_PROMPT`, built from one constant per instruction (`PERSONA`, `TOOL_USE`, `REPLY_STYLE`). No eval code. `build_agent(llm=None, extra_tools=())` is also how `agents/instrumented.py` builds its agent. |
 | `agents/instrumented.py` | `plain.build_agent()` plus the tools loaded from `tools/mcp_server.py`, with DeepEval instrumentation. The agent evals import `support_agent` from here. |
 | `agents/rag.py` | Agent with one tool, `search_policies`. Retrieved chunks are forwarded to the trace as `retrieval_context`. |
 | `agents/chatbot.py` | Multi-turn chatbot that runs its own tool-call loop over a model with `bind_tools()`, returning `(reply, history, tools_called)` per turn. |
@@ -156,6 +156,7 @@ The eval side adds the rest with `traced()` from `evals/common.py`: it wraps the
 
 - **`test_agent_untraced.py` scores low on purpose**: it passes a plain `LLMTestCase` with no trace, so the judge cannot see the tool call and assumes the answer is made up. `test_agent_tracing.py` runs the same check on a trace and passes. Kept as a baseline that shows why trace-level evals matter, and marked `xfail` so it does not fail the run.
 - **Known agent bug, marked `xfail`**: in `test_agent_quality.py`, the ORD-2099 return question (`xfail` in `evals/datasets/agent_quality.json`) fails because `get_order_status` does not return the order's category, so the agent cannot look up the refund policy. The `xfail` is non-strict: once the tool is fixed the case reports `XPASS`; remove the mark then. `tests/test_shop_tools.py` checks the same gap for free with a strict `xfail`, which fails the run once the tool is fixed.
+- **`PromptAlignmentMetric` cannot see tool calls**: it judges the input and the reply only, so it scores a tool-use instruction as ignored (0.0) even when the agent used the tools. `test_agent_quality.py` passes it only `PERSONA` and `REPLY_STYLE` from `agents/plain.py`; tool use is scored on the trace by `ToolCorrectnessMetric` and `StepEfficiencyMetric`.
 - **Synthesizer needs OpenAI**: DeepEval has no Anthropic or Voyage embedder, so `evals/synthesize_goldens.py` embeds `policies.txt` with OpenAI even when the judge is Claude. The evals themselves only read the saved goldens.
 - **Voyage free tier is 3 requests/minute**: `agents/tools/policy_search.py` embeds its 9 documents on the first search (one request) and each search embeds its query, so repeated RAG runs within a minute hit `RateLimitError` until a payment method is added.
 - **Windows console encoding**: when stdout is piped, Python on Windows encodes with cp1252 and crashes on emoji in model replies. Set `PYTHONIOENCODING=utf-8`.
