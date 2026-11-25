@@ -6,12 +6,9 @@ from deepeval.dataset import Golden
 from deepeval.metrics import TaskCompletionMetric, ToolCorrectnessMetric
 from deepeval.test_case import ToolCall
 
-from agents.instrumented import support_agent
-from evals.common import get_judge, traced
+from evals.common import get_judge, run_support_agent
 
 pytestmark = [pytest.mark.agent, pytest.mark.smoke]
-
-run_support_agent = traced(support_agent, name="support_agent")
 
 judge = get_judge()
 

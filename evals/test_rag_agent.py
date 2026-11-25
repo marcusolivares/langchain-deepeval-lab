@@ -12,12 +12,9 @@ from deepeval.metrics import (
     FaithfulnessMetric,
 )
 
-from agents.rag import rag_support_agent
-from evals.common import get_judge, traced
+from evals.common import get_judge, run_rag_support_agent
 
 pytestmark = [pytest.mark.rag, pytest.mark.smoke]
-
-run_rag_support_agent = traced(rag_support_agent, name="rag_support_agent")
 
 judge = get_judge()
 

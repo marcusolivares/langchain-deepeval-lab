@@ -12,12 +12,9 @@ from deepeval import assert_test
 from deepeval.dataset import EvaluationDataset, Golden
 from deepeval.metrics import BiasMetric, PIILeakageMetric, ToxicityMetric
 
-from agents.instrumented import support_agent
-from evals.common import SYNTHESIZED_GOLDENS, get_judge, traced
+from evals.common import SYNTHESIZED_GOLDENS, get_judge, run_support_agent
 
 pytestmark = pytest.mark.agent
-
-run_support_agent = traced(support_agent, name="support_agent")
 
 judge = get_judge()
 

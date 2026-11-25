@@ -92,7 +92,7 @@ Switch vendor per run without editing `.env`: `LLM_PROVIDER=openai python -m age
 | `tests/conftest.py` | Sets fake API keys and opts out of DeepEval telemetry, before any project module loads `.env`. |
 | `tests/fakes.py` | `FakeToolCallingModel` (a `GenericFakeChatModel` with a no-op `bind_tools()`), `fake_model(*replies)` and `tool_call(name, **args)` for scripting a model's replies. |
 | `tests/test_*.py` | Offline tests of the tools, the retriever, the agent loops (fake model, real tools and MCP server) and `run_conversation()`. |
-| `evals/common.py` | Shared eval helpers: `get_judge()`, `RUN_ASYNC`, `traced()`, `SYNTHESIZED_GOLDENS`, and the chatbot conversation driver `run_conversation()`. |
+| `evals/common.py` | Shared eval helpers: `get_judge()`, `RUN_ASYNC`, `traced()` and the traced runners built with it (`run_support_agent`, `run_rag_support_agent`), `SYNTHESIZED_GOLDENS`, and the chatbot conversation driver `run_conversation()`. |
 | `evals/conftest.py` | Refuses plain `pytest` runs, and provides the session-scoped `support_conversation` fixture so the two chatbot evals share one paid conversation. |
 | `evals/synthesize_goldens.py` | Generates goldens from `policies.txt` with DeepEval's Synthesizer and saves them to `evals/datasets/synthesized_goldens.json`. |
 | `evals/test_*.py` | The evals listed under Running. |
@@ -111,7 +111,7 @@ Each module builds a default instance on first use, so the entry points (`suppor
 2. `config={"callbacks": [deepeval_callback]}` on `.invoke()` — wires it in
 3. `update_current_trace(output=reply)` (plus `retrieval_context` in the RAG agent) — sets the clean reply on the trace
 
-The eval side adds the rest with `traced()` from `evals/common.py`: it wraps the agent in `@observe(name=...)` and returns a function that takes the golden, copies its `expected_output` and `expected_tools` onto the trace, and runs the agent on its input. Each test then calls `assert_test(golden=golden, metrics=[...])`, which scores the trace the test just produced.
+The eval side adds the rest with `traced()` from `evals/common.py`: it wraps the agent in `@observe(name=...)` and returns a function that takes the golden, copies its `expected_output` and `expected_tools` onto the trace, and runs the agent on its input. `evals/common.py` builds one such runner per agent, `run_support_agent` and `run_rag_support_agent`, and the evals import those. Each test then calls `assert_test(golden=golden, metrics=[...])`, which scores the trace the test just produced.
 
 **Why the golden is copied into the trace**: DeepEval metrics read `expected_tools`, `expected_output` and `retrieval_context` from the trace object, not directly from the golden.
 

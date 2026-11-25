@@ -9,12 +9,9 @@ from deepeval.metrics import (
     StepEfficiencyMetric,
 )
 
-from agents.instrumented import support_agent
-from evals.common import get_judge, traced
+from evals.common import get_judge, run_support_agent
 
 pytestmark = pytest.mark.agent
-
-run_support_agent = traced(support_agent, name="support_agent")
 
 judge = get_judge()
 

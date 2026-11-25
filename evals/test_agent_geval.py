@@ -6,12 +6,9 @@ from deepeval.dataset import Golden
 from deepeval.metrics import GEval
 from deepeval.test_case import SingleTurnParams
 
-from agents.instrumented import support_agent
-from evals.common import get_judge, traced
+from evals.common import get_judge, run_support_agent
 
 pytestmark = pytest.mark.agent
-
-run_support_agent = traced(support_agent, name="support_agent")
 
 correctness = GEval(
     name="Correctness",
